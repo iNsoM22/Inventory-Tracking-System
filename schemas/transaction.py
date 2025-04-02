@@ -5,6 +5,7 @@ from uuid import uuid4
 from product import Product
 from typing import List
 from employee import Employee
+from store import Store
 
 
 Base = declarative_base()
@@ -17,7 +18,7 @@ Base = declarative_base()
 # For that, Product Information should be inserted in the Products Table, followed by the
 # Restock Order for that Product.
 # Also, the Transaction Join will be based on the Transaction Type and ID with the Associated Tables.
-class Transation(Base):
+class Transaction(Base):
     __tablename__ = 'transactions'
 
     id: Mapped[UUID] = mapped_column(
@@ -28,10 +29,18 @@ class Transation(Base):
         UUID, nullable=False, comment="(F.Key) Unique identifier for the Associated record.")
     handled_by: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("employees.id"), nullable=False, comment="(F.Key) Unique identifier for the Employee.")
+    date: Mapped[datetime] = mapped_column(DateTime(
+        timezone=True), comment="Timestamp When the Transaction is Made.")
+    store_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("stores.id"), index=True, nullable=False, comment="(F.Key) Unique identifier for the Store.")
+
     processed_by: Mapped["Employee"] = relationship(uselist=False)
+    store: Mapped["Store"] = relationship(
+        uselist=False, back_populates="transactions")
 
 # Relationship: 1-to-1
 # Each Operation would be Handled by a Single Employee
+# Each Operation has to be Performed from a Particular Store
 
 
 class RemovalItems(Base):

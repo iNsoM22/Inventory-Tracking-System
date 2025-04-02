@@ -3,6 +3,7 @@ from sqlalchemy import String, DateTime, UUID, ForeignKey, Integer
 from datetime import datetime, timezone
 from typing import List
 from uuid import uuid4
+from store import Store
 
 Base = declarative_base()
 
@@ -28,10 +29,9 @@ class Employee(Base):
         String(30), nullable=False, comment="First Name of the Employee.")
     last_name: Mapped[str] = mapped_column(
         String(30), nullable=False, comment="Last Name of the Employee.")
-    hire_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
-                                                default=lambda: datetime.now(
-                                                    timezone.utc),
-                                                comment="Hire Date of the Employee.")
+    hire_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False,
+        default=lambda: datetime.now(timezone.utc), comment="Hire Date of the Employee.")
     leave_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=True, comment="Leave Date of the Employee.")
     phone_number: Mapped[str] = mapped_column(
@@ -41,11 +41,15 @@ class Employee(Base):
     address: Mapped[str] = mapped_column(
         String(200), nullable=True, comment="Address of the Employee.")
     role_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("roles.id"), nullable=False, comment="(F.Key) Identifier for Role Level."
-    )
+        UUID, ForeignKey("roles.id"), nullable=False, comment="(F.Key) Identifier for Role Level.")
     role = relationship("Role", back_populates="employees")
+    store_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("stores.id"), nullable=False, comment="(F.Key) Identifier for Stores.")
+    store: Mapped["Store"] = relationship(
+        uselist=False, back_populates="employees")
 
 
 # Relationship: 1-to-Many
 # Each Employee can have a Single Role
 # Each Role can have Multiple Employees
+# Each Employee can only work at a Single Store
