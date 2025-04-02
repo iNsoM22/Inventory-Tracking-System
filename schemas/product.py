@@ -1,5 +1,6 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
 from sqlalchemy import String, Float, UUID, ForeignKey, Integer, Boolean
+from typing import List
 from uuid import uuid4
 
 Base = declarative_base()
@@ -11,6 +12,9 @@ class Category(Base):
         Integer, primary_key=True, autoincrement=True, comment="Unique Identifier for the Category.")
     category: Mapped[str] = mapped_column(
         String, nullable=False, comment="Name of the Category.")
+
+    products: Mapped[List["Product"]] = relationship(
+        uselist=True, back_populates="category")
 
 
 # Removal of a Product from the Database will not be allowed, due to dependencies.
@@ -25,9 +29,16 @@ class Product(Base):
         String(50), nullable=False, comment="Name of the Product.")
     description: Mapped[str] = mapped_column(
         String, nullable=False, comment="Description of the Product")
-    category_id: Mapped[str] = mapped_column(
-        ForeignKey("categories.id"), nullable=False, comment="Category ID of the Product.")
     price: Mapped[float] = mapped_column(
         Float, nullable=False, default=0.0, comment="Product price.")
     is_removed: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, comment="Product Removal Indicator")
+    category_id: Mapped[str] = mapped_column(
+        ForeignKey("categories.id"), nullable=False, comment="Category ID of the Product.")
+    category: Mapped["Category"] = relationship(
+        uselist=False, back_populates="products")
+
+
+# Relationship: 1-to-Many
+# Each Product will have a Single Category.
+# Each Category will have Multiple Products.

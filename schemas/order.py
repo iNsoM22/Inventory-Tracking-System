@@ -1,24 +1,31 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column
-from sqlalchemy import Column, String, Float, DateTime, UUID, ForeignKey, Integer
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
+from sqlalchemy import String, Float, DateTime, UUID, ForeignKey, Integer
 from datetime import datetime, timezone
+from typing import List
 from uuid import uuid4
+from product import Product
+from customer import Customer
 
 Base = declarative_base()
 
 
+# P.S: The Database will be normalized upto Boyce Codd's Form.
+# These Items/Carts Tables are made to normalize the Database and to support
+# efficient Queries.
 class CartItems(Base):
     __tablename__ = "cart_items"
 
-    id: Mapped[int] = Column(Integer, nullable=False,
-                             unique=True, autoincrement=True)
     order_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("orders.id"), nullable=False, comment="(F.Key) Unique identifier for the Order.")
+        UUID, ForeignKey("orders.id"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Order.")
     product_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("products.id"), nullable=False, comment="(F.Key) Unique identifier for the Product.")
+        UUID, ForeignKey("products.id"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Product.")
     quantity: Mapped[int] = mapped_column(
         Integer, nullable=False, comment="Quantity of the Product in the Cart.")
     discount: Mapped[float] = mapped_column(
         Float, nullable=False, default=0.0, comment="Product Discount Rate (0-1).")
+    order: Mapped["Order"] = relationship(
+        uselist=False, back_populates="items")
+    product: Mapped["Product"] = relationship(uselist=False)
 
 
 class Order(Base):
@@ -40,5 +47,15 @@ class Order(Base):
         timezone=True), comment="Timestamp When the Order is Delivered to the Customer.")
     order_mode: Mapped[str] = mapped_column(
         String, nullable=False, comment="Order mode, either Online or Offline.")
-    proccessed_by: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("employees.id"), nullable=True, comment="(F.Key) Unique identifier for the Employee. Depends on the Mode of Order.")
+    customer_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("customers.id"), nullable=False, comment="(F.Key) Unique identifier for the Customer.")
+
+    items: Mapped[List["CartItems"]] = relationship(
+        uselist=True, back_populates="order")
+    customer: Mapped["Customer"] = relationship(uselist=False)
+
+
+# Relationship: 1-to-Many
+# Each Order will have Multiple Cart Items.
+# Each Cart Items is Associated with a particular Order
+# Each Order will be Made by a Single Customer

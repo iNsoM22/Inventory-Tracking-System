@@ -1,6 +1,7 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
 from sqlalchemy import String, DateTime, UUID, ForeignKey, Integer
 from datetime import datetime, timezone
+from typing import List
 from uuid import uuid4
 
 Base = declarative_base()
@@ -8,13 +9,14 @@ Base = declarative_base()
 
 # This table will be used to define the Hierchy of the Organization.
 # Also, the Higher Level allows the use of Complex and Important Functional APIs.
-class Roles(Base):
+class Role(Base):
     __tablename__ = 'roles'
 
     id: Mapped[UUID] = mapped_column(
         UUID, primary_key=True, default=uuid4, comment="Unique Identifier for Roles.")
     role_level: Mapped[int] = mapped_column(
         Integer, nullable=False, comment="Role Level of the Employee.")
+    employees: Mapped[List["Employee"]] = relationship(back_populates="role")
 
 
 class Employee(Base):
@@ -33,10 +35,17 @@ class Employee(Base):
     leave_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=True, comment="Leave Date of the Employee.")
     phone_number: Mapped[str] = mapped_column(
-        String(16), primary_key=True, comment="Phone number of the Employee.")
+        String(16), unique=True, nullable=False, comment="Phone number of the Employee.")
     email: Mapped[str] = mapped_column(
         String, unique=True, nullable=True, comment="Email of the Employee.")
     address: Mapped[str] = mapped_column(
         String(200), nullable=True, comment="Address of the Employee.")
-    role_level: Mapped[UUID] = mapped_column(
-        UUID, primary_key=True, default=uuid4, comment="(F.K) Identifier for Role Level.")
+    role_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("roles.id"), nullable=False, comment="(F.Key) Identifier for Role Level."
+    )
+    role = relationship("Role", back_populates="employees")
+
+
+# Relationship: 1-to-Many
+# Each Employee can have a Single Role
+# Each Role can have Multiple Employees

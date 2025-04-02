@@ -8,7 +8,7 @@ Base = declarative_base()
 
 # Made the Email, and Physical Address Nullable, to provide support for
 # Offline Customers, who don't want to Share their Information.
-class Customers(Base):
+class Customer(Base):
     __tablename__ = 'customers'
 
     id: Mapped[UUID] = mapped_column(
