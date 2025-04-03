@@ -3,15 +3,13 @@ from sqlalchemy import Column, String, Float, DateTime, UUID, ForeignKey, Intege
 from datetime import datetime, timezone
 from typing import List
 from uuid import uuid4
-from product import Product
-from order import Order
-
-
-Base = declarative_base()
+from .product import Product
+from .order import Order
+from .base import Base
 
 
 class RefundItems(Base):
-    __tablename__ = "cart_items"
+    __tablename__ = "refund_items"
 
     refund_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("refunds.id"), primary_key=True, comment="(F.Key) Unique identifier for the Order.")

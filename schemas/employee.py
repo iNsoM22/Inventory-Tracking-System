@@ -1,11 +1,9 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, DateTime, UUID, ForeignKey, Integer
 from datetime import datetime, timezone
 from typing import List
 from uuid import uuid4
-from store import Store
-
-Base = declarative_base()
+from .base import Base
 
 
 # This table will be used to define the Hierchy of the Organization.

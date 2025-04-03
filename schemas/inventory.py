@@ -1,8 +1,7 @@
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
 from sqlalchemy import Float, UUID, ForeignKey, Integer
-from product import Product
-
-Base = declarative_base()
+from .product import Product
+from .base import Base
 
 
 class Inventory(Base):

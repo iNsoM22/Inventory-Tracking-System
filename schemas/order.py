@@ -3,10 +3,9 @@ from sqlalchemy import String, Float, DateTime, UUID, ForeignKey, Integer
 from datetime import datetime, timezone
 from typing import List
 from uuid import uuid4
-from product import Product
-from customer import Customer
-
-Base = declarative_base()
+from .product import Product
+from .customer import Customer
+from .base import Base
 
 
 # P.S: The Database will be normalized upto Boyce Codd's Form.

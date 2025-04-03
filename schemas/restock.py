@@ -1,33 +1,30 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
-from sqlalchemy import Column, String, DateTime, UUID, ForeignKey, Integer
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, DateTime, UUID, ForeignKey, Integer
 from datetime import datetime, timezone
 from uuid import uuid4
 from typing import List
-from product import Product
-
-Base = declarative_base()
+from .product import Product
+from .base import Base
 
 
 class RestockItems(Base):
     __tablename__ = "restock_items"
 
-    id: Mapped[int] = Column(Integer, nullable=False,
-                             unique=True, autoincrement=True, comment="Unique Surrogate ID.")
     restock_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("restocks.id"), nullable=False, comment="(F.Key) Unique identifier for the Restock.")
+        UUID, ForeignKey("restocks.id"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Restock.")
     product_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("products.id"), nullable=False, comment="(F.Key) Unique identifier for the Product.")
+        UUID, ForeignKey("products.id"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Product.")
     previous_quantity: Mapped[int] = mapped_column(
         Integer, nullable=False, comment="Quantity of the Product before Restock.")
     restock_quantity: Mapped[int] = mapped_column(
         Integer, nullable=False, comment="Quantity of the Product for Restock.")
 
     product: Mapped["Product"] = relationship(uselist=False)
-    restock: Mapped["Restocks"] = relationship(
+    restock: Mapped["Restock"] = relationship(
         uselist=False, back_populates="items")
 
 
-class Restocks(Base):
+class Restock(Base):
     __tablename__ = "restocks"
 
     id: Mapped[UUID] = mapped_column(
@@ -39,7 +36,7 @@ class Restocks(Base):
     date_received: Mapped[datetime] = mapped_column(DateTime(
         timezone=True), comment="Timestamp When the Restock Order is Delivered.")
     items: Mapped[List["RestockItems"]] = relationship(
-        uselist=True, back_populates="refund")
+        uselist=True, back_populates="restock")
 
 
 # Relationship: 1-to-Many

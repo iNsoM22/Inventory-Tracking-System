@@ -1,9 +1,8 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Float, UUID, ForeignKey, Integer, Boolean
 from typing import List
 from uuid import uuid4
-
-Base = declarative_base()
+from .base import Base
 
 
 class Category(Base):

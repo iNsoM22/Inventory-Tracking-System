@@ -1,14 +1,11 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, DateTime, UUID, ForeignKey, Integer
 from datetime import datetime, timezone
 from uuid import uuid4
-from product import Product
 from typing import List
-from employee import Employee
-from store import Store
-
-
-Base = declarative_base()
+from .product import Product
+from .employee import Employee
+from .base import Base
 
 
 # Table to store each transaction made, a transaction could be defined as
@@ -46,12 +43,10 @@ class Transaction(Base):
 class RemovalItems(Base):
     __tablename__ = "removal_items"
 
-    id: Mapped[int] = mapped_column(Integer, nullable=False,
-                                    unique=True, autoincrement=True, comment="Unique Surrogate ID.")
     removal_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("stock_removals.id"), nullable=False, comment="(F.Key) Unique identifier for the Stocks Removal.")
+        UUID, ForeignKey("stock_removals.id"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Stocks Removal.")
     product_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("products.id"), nullable=False, comment="(F.Key) Unique identifier for the Product.")
+        UUID, ForeignKey("products.id"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Product.")
     previous_quantity: Mapped[int] = mapped_column(
         Integer, nullable=False, comment="Quantity of the Product before Removal.")
     removal_quantity: Mapped[int] = mapped_column(

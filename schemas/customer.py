@@ -1,9 +1,7 @@
 from sqlalchemy.orm import declarative_base, mapped_column, Mapped
 from sqlalchemy import String, UUID
 from uuid import uuid4
-
-
-Base = declarative_base()
+from .base import Base
 
 
 # Made the Email, and Physical Address Nullable, to provide support for
@@ -18,7 +16,7 @@ class Customer(Base):
     last_name: Mapped[str] = mapped_column(
         String(30), nullable=False, comment="Last Name of the Customer.")
     phone_number: Mapped[str] = mapped_column(
-        String(16), primary_key=True, comment="Phone number of the Customer.")
+        String(16), unique=True, index=True, comment="Phone number of the Customer.")
     email: Mapped[str] = mapped_column(
         String, unique=True, nullable=True, comment="Email of the Customer.")
     address: Mapped[str] = mapped_column(

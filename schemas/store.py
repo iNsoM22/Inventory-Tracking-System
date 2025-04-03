@@ -2,11 +2,10 @@ from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
 from sqlalchemy import String, UUID, ForeignKey
 from typing import List
 from uuid import uuid4
-from employee import Employee
-from inventory import Inventory
-from schemas.transaction import Transaction
-
-Base = declarative_base()
+from .employee import Employee
+from .inventory import Inventory
+from .transaction import Transaction
+from .base import Base
 
 
 class Location(Base):
@@ -37,7 +36,7 @@ class Store(Base):
     employees: Mapped[List["Employee"]] = relationship(
         uselist=True, back_populates="store")
     inventory: Mapped[List["Inventory"]] = relationship(
-        uselist=True, back_populates="store")
+        uselist=True)
     transactions: Mapped[List["Transaction"]] = relationship(
         uselist=True, back_populates="store")
 
