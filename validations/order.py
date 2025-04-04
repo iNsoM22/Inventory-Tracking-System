@@ -1,48 +1,73 @@
-from pydantic import BaseModel, Field, model_validator
-from typing import Dict, Literal
+from pydantic import BaseModel, Field, UUID4, ConfigDict, field_validator, model_validator
+from typing import Optional, List, Literal
 from datetime import datetime, timezone
+from .product import ProductResponseWithCategory
+from .customer import CustomerResponse
 
 
-class Order(BaseModel):
-    id: str = Field(..., description="Unique identifier for the order.")
+class CartItemBase(BaseModel):
+    product_id: UUID4 = Field(..., description="Unique identifier for the Product")
+    quantity: int = Field(gt=0, description="Quantity of the Product in the Cart")
+    discount: float = Field(0.0, description="Product Discount Rate (0-1)")
 
-    cart: Dict[str, int] = Field(default_factory=dict,
-                                 description="Mapping of product ID to quantity in the order.")
+    model_config = ConfigDict(from_attributes=True)
 
-    total_price: float = Field(default=0.0, ge=0,
-                               description="Total price of the order, including tax and discount.")
 
-    discount: float = Field(default=0.0, ge=0, le=1,
-                            description="Discount percentage applied to the order.")
+class CartItemUpdateRequest(CartItemBase):
+    quantity: Optional[int] = Field(None, ge=0, description="Updated Quantity of the Product in the Cart")
+    discount: Optional[float] = Field(None, ge=0, description="Updated Discount Rate of the Product in the Cart")
+    
 
-    tax: float = Field(default=0.0, ge=0, le=1,
-                       description="Tax percentage applied to the order.")
 
-    status: Literal[
-        "Done",
-        "Pending",
-        "Refunded",
-        "Canceled"] = Field(default="Pending", description="Order status.")
+class CartItemResponse(CartItemBase):
+    product: Optional[ProductResponseWithCategory] = Field(None, description="Product Details")
+    product_id: UUID4 = Field(exclude=True, description="Unique identifier for the Product")
 
-    date_created: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),
-                                   description="Timestamp when the order was created.")
 
-    order_mode: Literal[
-        "Online",
-        "Offline"] = Field(..., description="Order mode, either Online or Offline.")
 
-    def calculate_total(self, catalog):
-        """
-        Calculates the total price after applying discount and tax.
+class OrderBase(BaseModel):
+    order_amount: float = Field(gt=0, description="Price of the Order")
+    discount_amount: float = Field(ge=0, description="Discounted Amount of the Order")
+    tax: float = Field(ge=0, description="Tax Amount applied to the Order")
+    status: Literal["Pending",
+                    "Received",
+                    "Cancelled",
+                    "Refunded"] = Field(default="Pending", description="Order status. Can be Pending, Received, Cancelled, or Refunded")
+    date_placed: Optional[datetime] = Field(default=None, description="Timestamp When the Order is Placed")
+    date_received: Optional[datetime] = Field(default=None, description="Timestamp When the Order is Delivered to the Customer")
+    order_mode: Literal["Online", "Offline"] = Field(default="Offline", description="Order mode, either Online or Offline")
+    order_delivery_address: Optional[str] = Field(None, description="Delivery Address of the Customer")
+    customer_id: UUID4 = Field(..., description="Unique identifier for the Customer")
+    items: List[CartItemBase] = Field(default=list, description="List of Cart Items in the Order")
 
-        Args:
-            product_prices (Dict[str, float])->{Product.id: Product.price}:
-            A dictionary mapping product IDs to their discounted price.
-        """
-        subtotal = sum(
-            catalog[product_id].discounted_price * quantity for product_id, quantity in self.cart.items())
 
-        if self.discount:
-            discount_amount = subtotal * self.discount
-        tax_amount = (subtotal - discount_amount) * self.tax
-        self.total_price = subtotal - discount_amount + tax_amount
+    model_config = ConfigDict(from_attributes=True)
+    
+         
+class OrderRequest(OrderBase):
+    @model_validator(mode="after")
+    def validate_address(self):
+        if self.order_mode == "Online" and not len(self.order_delivery_address):
+            raise ValueError("Delivery Address is required for Online Orders")
+        return self 
+
+
+class OrderUpdateRequest(BaseModel):
+    status: Literal["Pending",
+                    "Received",
+                    "Cancelled",
+                    "Refunded"] = Field(default="Pending", 
+                              description="Order status. Can be Pending, Received, Cancelled, or Refunded")
+
+    @property
+    def date_received(self):
+        if self.status == "Received":
+            return datetime.now(timezone.utc)
+        return None
+        
+
+class OrderResponse(OrderBase):
+    id: UUID4 = Field(..., description="Unique identifier for the Order")
+    items: List[CartItemResponse] = Field(default_factory=list, description="List of Cart items in the order")
+    customer: Optional[CustomerResponse] = Field(None, description="Customer details")  
+    customer_id: UUID4 = Field(exclude=True, description="Unique identifier for the Customer")

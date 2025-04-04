@@ -49,7 +49,7 @@ async def get_category(id:int , db: db_dependency):
         raise HTTPException(status_code=500, detail=f"Error Retrieving Category: {str(e)}")
 
 
-@router.delete("/del/{id}", response_model=CategoryResponse)
+@router.delete("/del/{id}", status_code=204)
 async def delete_category(id:int , db: db_dependency):
     """Delete a Category by ID."""
     try:
@@ -58,7 +58,8 @@ async def delete_category(id:int , db: db_dependency):
         if category:
             db.delete(category)
             db.commit()
-            return CategoryResponse.model_validate(category)
+            return {"detail": "Category and its Related Information Have Been Deleted Successfully."}
+
         
         raise HTTPException(status_code=404, detail="Category Not Found")
     

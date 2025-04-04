@@ -15,7 +15,7 @@ class CartItems(Base):
     __tablename__ = "cart_items"
 
     order_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("orders.id"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Order.")
+        UUID, ForeignKey("orders.id", ondelete="CASCADE"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Order.")
     product_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("products.id"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Product.")
     quantity: Mapped[int] = mapped_column(
@@ -46,11 +46,13 @@ class Order(Base):
         timezone=True), comment="Timestamp When the Order is Delivered to the Customer.")
     order_mode: Mapped[str] = mapped_column(
         String, nullable=False, comment="Order mode, either Online or Offline.")
+    order_delivery_address: Mapped[str] = mapped_column(String(200), 
+                                                nullable=True, comment="Delivery Address for the Order.")
     customer_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("customers.id"), nullable=False, comment="(F.Key) Unique identifier for the Customer.")
 
     items: Mapped[List["CartItems"]] = relationship(
-        uselist=True, back_populates="order")
+        uselist=True, back_populates="order", cascade="all, delete-orphan", passive_deletes=True)
     customer: Mapped["Customer"] = relationship(uselist=False)
 
 

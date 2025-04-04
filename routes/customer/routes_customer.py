@@ -75,7 +75,7 @@ async def update_customer(customer_id: UUID, update_data: CustomerUpdateRequest,
         raise HTTPException(status_code=400, detail=f"Error Updating Customer: {str(e)}")
 
 
-@router.delete("/del/{customer_id}", response_model=CustomerResponse)
+@router.delete("/del/{customer_id}", status_code=204)
 async def delete_customer(customer_id: UUID, db: db_dependency):
     """Delete a Customer by ID."""
     try:
@@ -83,8 +83,8 @@ async def delete_customer(customer_id: UUID, db: db_dependency):
         if customer:
             db.delete(customer)
             db.commit()
-
-            return CustomerResponse.model_validate(customer)
+            return {"detail": "Customer and Related Information have been deleted successfully."}
+        
         raise HTTPException(status_code=404, detail="Customer Not Found")
     
     except HTTPException as e:

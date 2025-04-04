@@ -90,7 +90,8 @@ async def delete_product(product_id: UUID, db: db_dependency):
             db.delete(product)
             db.commit()
 
-            return ProductResponse.model_validate(product)
+            return {"detail": "Product and its Related Information has been Deleted Successfully."}
+
         raise HTTPException(status_code=404, detail="Product Not Found")
     
     except HTTPException as e:
