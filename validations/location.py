@@ -1,5 +1,4 @@
-from pydantic import BaseModel, Field, computed_field
-from uuid import UUID
+from pydantic import BaseModel, Field, computed_field, ConfigDict
 from typing import Optional, List
 
 
@@ -13,7 +12,7 @@ class LocationResponse(BaseModel):
     name: str = Field(..., max_length=50, description="Name of the Location")
     address: str = Field(..., description="Address of the Location")
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LocationResponseWithStores(LocationResponse):

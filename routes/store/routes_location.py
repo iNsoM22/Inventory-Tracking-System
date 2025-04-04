@@ -10,7 +10,7 @@ from validations.location import LocationRequest, LocationResponse, LocationResp
 from utils.db import db_dependency
 
 
-router = APIRouter(prefix="/location")
+router = APIRouter(prefix="/locations")
 
 
 @router.post("/add", response_model=LocationResponse)

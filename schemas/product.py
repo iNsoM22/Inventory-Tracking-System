@@ -31,9 +31,9 @@ class Product(Base):
     price: Mapped[float] = mapped_column(
         Float, nullable=False, default=0.0, comment="Product price.")
     is_removed: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, comment="Product Removal Indicator")
-    category_id: Mapped[str] = mapped_column(
-        ForeignKey("categories.id"), nullable=False, comment="Category ID of the Product.")
+        Boolean, nullable=False, default=False, comment="Product Removal Indicator.")
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("categories.id"), nullable=False, comment="(F.K) Category of the Product.")
     category: Mapped["Category"] = relationship(
         uselist=False, back_populates="products")
 

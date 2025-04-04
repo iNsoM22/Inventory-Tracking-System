@@ -10,11 +10,11 @@ from .base import Base
 # Also, the Higher Level allows the use of Complex and Important Functional APIs.
 class Role(Base):
     __tablename__ = 'roles'
-
-    id: Mapped[UUID] = mapped_column(
-        UUID, primary_key=True, default=uuid4, comment="Unique Identifier for Roles.")
-    role_level: Mapped[int] = mapped_column(
-        Integer, nullable=False, comment="Role Level of the Employee.")
+    
+    level: Mapped[int] = mapped_column(
+        Integer, nullable=False, primary_key=True, comment="Role Level of the Employee.")
+    role: Mapped[str] = mapped_column(
+        String(30), nullable=False, comment="Role Level of the Employee.")
     employees: Mapped[List["Employee"]] = relationship(back_populates="role")
 
 
@@ -38,8 +38,8 @@ class Employee(Base):
         String, unique=True, nullable=True, comment="Email of the Employee.")
     address: Mapped[str] = mapped_column(
         String(200), nullable=True, comment="Address of the Employee.")
-    role_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("roles.id"), nullable=False, comment="(F.Key) Identifier for Role Level.")
+    level: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("roles.level"), nullable=False, comment="(F.Key) Identifier for Role Level.")
     role = relationship("Role", back_populates="employees")
     store_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("stores.id"), nullable=False, comment="(F.Key) Identifier for Stores.")

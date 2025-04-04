@@ -9,6 +9,7 @@ from sqlalchemy import create_engine
 from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 
 DATABASE_URL = "sqlite:///testing.db"
@@ -22,6 +23,10 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+        
+    except SQLAlchemyError as e:
+        db.rollback()
+
     finally:
         db.close()
 
