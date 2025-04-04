@@ -1,17 +1,28 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
+from uuid import UUID
+
+class CustomerBase(BaseModel):
+    first_name: str = Field(..., max_length=50, description="First Name of the Customer")
+    last_name: str = Field(..., max_length=50, description="Last Name of the Customer")
+    email: Optional[str] = Field(None, description="Email of the Customer")
+    phone_number: str = Field(..., description="Phone of the Customer")
+    address: Optional[str] = Field(None, description="Address of the Customer")
+    
+    model_config = ConfigDict(from_attributes=True)
+    
+    
+class CustomerRequest(CustomerBase):
+    pass
 
 
-# Design Choice: Each Customer has to Place their Orders for their Data to be handled and Stored.
-class Customer(BaseModel):
-    id: str = Field(..., description="Unique identifier for the customer")
-    first_name: str = Field(..., description="First name of the customer")
-    last_name: str = Field(..., description="Last name of the customer")
-    order_id: Optional[str] = Field(
-        None, description="Associated order ID")
-    phone_number: Optional[str] = Field(
-        None, description="Customer's Phone number")
-    email: Optional[EmailStr] = Field(
-        None, description="Customer's Email Address")
-    address: Optional[str] = Field(
-        None, description="Customer's Physical Address")
+class CustomerResponse(CustomerBase):
+    id: UUID = Field(..., description="Unique Identifier for the Customer")
+    
+
+class CustomerUpdateRequest(CustomerBase):
+    first_name: Optional[str] = Field(None, max_length=50, description="First Name of the Customer")
+    last_name: Optional[str] = Field(None, max_length=50, description="Last Name of the Customer")
+    phone_number: Optional[str] = Field(None, description="Phone of the Customer")
+    
+    
