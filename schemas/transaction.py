@@ -24,14 +24,14 @@ class Transaction(Base):
         String(50), nullable=False, comment="Type of Transaction. Can be Restock, Sale, Refund or Product Removal.")
     operation_id: Mapped[UUID] = mapped_column(
         UUID, nullable=False, comment="(F.Key) Unique identifier for the Associated record.")
-    handled_by: Mapped[UUID] = mapped_column(
+    handler_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("employees.id"), nullable=False, comment="(F.Key) Unique identifier for the Employee.")
     date: Mapped[datetime] = mapped_column(DateTime(
         timezone=True), comment="Timestamp When the Transaction is Made.")
     store_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("stores.id"), index=True, nullable=False, comment="(F.Key) Unique identifier for the Store.")
 
-    processed_by: Mapped["Employee"] = relationship(uselist=False)
+    handler: Mapped["Employee"] = relationship(uselist=False)
     store: Mapped["Store"] = relationship(
         uselist=False, back_populates="transactions")
 

@@ -35,11 +35,11 @@ class Employee(Base):
     phone_number: Mapped[str] = mapped_column(
         String(16), unique=True, nullable=False, comment="Phone number of the Employee.")
     email: Mapped[str] = mapped_column(
-        String, unique=True, nullable=True, comment="Email of the Employee.")
+        String, unique=True, nullable=False, comment="Email of the Employee.")
     address: Mapped[str] = mapped_column(
-        String(200), nullable=True, comment="Address of the Employee.")
-    level: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("roles.level"), nullable=False, comment="(F.Key) Identifier for Role Level.")
+        String(200), nullable=False, comment="Address of the Employee.")
+    level: Mapped[int] = mapped_column(
+        Integer, ForeignKey("roles.level"), nullable=False, comment="(F.Key) Identifier for Role Level.")
     store_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("stores.id"), nullable=False, comment="(F.Key) Identifier for Stores.")
 
