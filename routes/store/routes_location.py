@@ -1,10 +1,5 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path.joinpath(Path.cwd().absolute(), "/utils/")))
-
 from schemas.store import Location
 from validations.location import LocationRequest, LocationResponse, LocationResponseWithStores
 from utils.db import db_dependency

@@ -40,12 +40,10 @@ class Employee(Base):
         String(200), nullable=True, comment="Address of the Employee.")
     level: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("roles.level"), nullable=False, comment="(F.Key) Identifier for Role Level.")
-    role = relationship("Role", back_populates="employees")
     store_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("stores.id"), nullable=False, comment="(F.Key) Identifier for Stores.")
-    store: Mapped["Store"] = relationship(
-        uselist=False, back_populates="employees")
 
+    role = relationship("Role", back_populates="employees")
 
 # Relationship: 1-to-Many
 # Each Employee can have a Single Role

@@ -158,6 +158,6 @@ def update_cart_items(order_id: UUID, items_update_request: List[CartItemUpdateR
                 
             
                 
-                
-                
-            
+# P.S: Order Cart Items Update End-Points are exposed but their usage is highly discouraged.
+# Once the Order is created, Items should not be Updated. 
+# For this, Cancel the Previous Order and Create a New One with Correct Information.

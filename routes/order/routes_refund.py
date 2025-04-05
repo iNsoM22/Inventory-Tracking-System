@@ -1,8 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
 from uuid import UUID
-from datetime import datetime, timezone
-
 from utils.db import db_dependency
 from schemas.order import Order
 from schemas.refund import Refund, RefundItems
@@ -11,6 +9,7 @@ from validations.refund import (
     RefundUpdateRequest,
     RefundResponse,
 )
+
 
 router = APIRouter(prefix="/refunds", tags=["Refunds"])
 
@@ -30,7 +29,8 @@ def create_refund(refund_data: RefundRequest, db: db_dependency):
             for item in refund_data.items:
                 if item.product_id in products_ordered:
                     product = products_ordered[item.product_id]
-                    total_amount += product.product.price - product.product.price * product.discount
+                    price = product.product.price * (1 - product.discount)
+                    total_amount += price * item.quantity
                     refund_model = RefundItems(
                         product_id=item.product_id,
                         quantity=item.quantity
