@@ -1,4 +1,4 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Float, UUID, ForeignKey, Integer
 from .product import Product
 from .base import Base

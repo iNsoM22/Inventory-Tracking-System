@@ -1,11 +1,12 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
-from sqlalchemy import String, UUID, ForeignKey, Integer
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, ForeignKey, Integer
 from typing import List
-from uuid import uuid4
 from .employee import Employee
 from .inventory import Inventory
 from .transaction import Transaction
 from .base import Base
+from .restock import Restock
+from .removal import StockRemoval
 
 
 class Location(Base):
@@ -36,7 +37,9 @@ class Store(Base):
     inventory: Mapped[List["Inventory"]] = relationship(
         uselist=True)
     transactions: Mapped[List["Transaction"]] = relationship(
-        uselist=True, back_populates="store")
+        uselist=True)
+    restocks: Mapped[List["Restock"]] = relationship(uselist=True)
+    removals: Mapped[List["StockRemoval"]] = relationship(uselist=True)
 
 
 # Relationship: 1-to-Many

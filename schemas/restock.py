@@ -11,7 +11,7 @@ class RestockItems(Base):
     __tablename__ = "restock_items"
 
     restock_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("restocks.id"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Restock.")
+        UUID, ForeignKey("restocks.id", ondelete="CASCADE"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Restock.")
     product_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("products.id"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Product.")
     previous_quantity: Mapped[int] = mapped_column(
@@ -29,6 +29,8 @@ class Restock(Base):
 
     id: Mapped[UUID] = mapped_column(
         UUID, primary_key=True, default=uuid4, comment="Unique identifier for Restock Orders.")
+    store_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("stores.id"), nullable=False, index=True, comment="(F.Key) Unique identifier for the Store.")    
     status: Mapped[str] = mapped_column(
         String, nullable=False, default="Pending", comment="Restock Status. Can be Pending, Completed or Cancelled.")
     date_placed: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(
@@ -36,9 +38,10 @@ class Restock(Base):
     date_received: Mapped[datetime] = mapped_column(DateTime(
         timezone=True), comment="Timestamp When the Restock Order is Delivered.")
     items: Mapped[List["RestockItems"]] = relationship(
-        uselist=True, back_populates="restock")
+        uselist=True, back_populates="restock", cascade="all, delete-orphan", passive_deletes=True)
 
 
 # Relationship: 1-to-Many
 # Each Restock Order can have Multiple Items
 # Each Item can only have a Single Restock Order Associated
+# Each Restock Order can be made by a Store Only.
