@@ -1,5 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, computed_field
-from uuid import UUID
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, computed_field, UUID4
 from datetime import datetime, timezone
 from typing import Optional, List
 
@@ -51,7 +50,6 @@ class EmployeeBase(BaseModel):
     email: EmailStr = Field(..., description="Email of the Employee")
     address: str = Field(..., max_length=200, description="Address of the Employee")
     level: int = Field(..., description="Employee Role Level from Roles")
-    store_id: UUID = Field(..., description="Store Identifier where the Employee Works")
     hire_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), 
                                 description="Hire Date of the Employee")
     leave_date: Optional[datetime] = Field(None, description="Leave Date of the Employee")
@@ -60,12 +58,13 @@ class EmployeeBase(BaseModel):
 
 
 class EmployeeRequest(EmployeeBase):
-    pass
+    store_id: UUID4 = Field(..., description="Store Identifier where the Employee Works")
 
 
 
 class EmployeeResponse(EmployeeBase):
-    id: UUID = Field(..., description="Unique Identifier for the Employee")
+    id: UUID4 = Field(..., description="Unique Identifier for the Employee")
+    store_id: UUID4 = Field(..., description="Store Identifier where the Employee Works")
     role: str = Field(..., description="Role of the Employee")
     
     @field_validator(field='role', mode="before")
@@ -75,7 +74,7 @@ class EmployeeResponse(EmployeeBase):
 
 
 class EmployeeUpdateRequest(BaseModel):
-    id: UUID = Field(..., description="Unique Identifier for the Employee")
+    id: UUID4 = Field(..., description="Unique Identifier for the Employee")
     first_name: Optional[str] = Field(None, max_length=30, description="First Name of the Employee")
     last_name: Optional[str] = Field(None, max_length=30, description="Last Name of the Employee")
     hire_date: Optional[datetime] = Field(None, description="Hire Date of the Employee")
@@ -83,11 +82,11 @@ class EmployeeUpdateRequest(BaseModel):
     phone_number: Optional[str] = Field(None, max_length=16, description="Phone number of the Employee")
     email: Optional[EmailStr] = Field(None, description="Email of the Employee")
     address: Optional[str] = Field(None, max_length=200, description="Address of the Employee")
-    level: Optional[UUID] = Field(None, description="Role Level Identifier")
-    store_id: Optional[UUID] = Field(None, description="Store Identifier where the Employee Works")
+    level: Optional[UUID4] = Field(None, description="Role Level Identifier")
+    store_id: Optional[UUID4] = Field(None, description="Store Identifier where the Employee Works")
     
     model_config = ConfigDict(from_attributes=True)
 
 class EmployeeDeleteRequest(BaseModel):
-    id: UUID = Field(..., description="Unique Identifier for the Employee")
+    id: UUID4 = Field(..., description="Unique Identifier for the Employee")
     

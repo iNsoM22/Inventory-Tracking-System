@@ -4,7 +4,6 @@ from .product import ProductResponseWithCategory
 
 
 class InventoryBase(BaseModel):
-    store_id: UUID4 = Field(..., description="Unique identifier for the Store")
     product_id: UUID4 = Field(..., description="Unique identifier for the Product")
     quantity: int = Field(default=0, ge=0, description="Quantity of the Product in the Inventory")
     max_discount_amount: float = Field(
@@ -18,11 +17,12 @@ class InventoryBase(BaseModel):
 
 
 class InventoryRequest(InventoryBase):
-    pass
+    store_id: UUID4 = Field(..., description="Unique identifier for the Store")
+
 
 
 class InventoryResponse(InventoryBase):
-    pass
+    store_id: UUID4 = Field(..., description="Unique identifier for the Store")
 
 
 class InventoryUpdateRequest(BaseModel):
@@ -33,7 +33,7 @@ class InventoryUpdateRequest(BaseModel):
     )
 
 
-class InventoryResponseWithProduct(InventoryBase):
+class InventoryResponseWithProduct(InventoryResponse):
     product: Optional[ProductResponseWithCategory] = Field(
         None, description="Product details including category"
     )
