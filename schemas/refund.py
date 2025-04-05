@@ -1,5 +1,5 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
-from sqlalchemy import Column, String, Float, DateTime, UUID, ForeignKey, Integer
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import  String, Float, DateTime, UUID, ForeignKey, Integer
 from datetime import datetime, timezone
 from typing import List
 from uuid import uuid4
@@ -12,7 +12,7 @@ class RefundItems(Base):
     __tablename__ = "refund_items"
 
     refund_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("refunds.id"), primary_key=True, comment="(F.Key) Unique identifier for the Order.")
+        UUID, ForeignKey("refunds.id", ondelete="CASCADE"), primary_key=True, comment="(F.Key) Unique identifier for the Order.")
     product_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("products.id"), primary_key=True, comment="(F.Key) Unique identifier for the Product.")
     quantity: Mapped[int] = mapped_column(
@@ -33,7 +33,7 @@ class Refund(Base):
     amount: Mapped[float] = mapped_column(
         Float, nullable=False, default=0.0, comment="Amount to be refunded.")
     status: Mapped[str] = mapped_column(
-        String, nullable=False, default="Pending", comment="Application Status. Can be Pending, Approved, Rejected, or Refunded.")
+        String, nullable=False, default="Pending", comment="Application Status. Can be Pending, Approved, Rejected, Cancelled or Refunded.")
     application_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(
         timezone.utc), comment="Timestamp When the Application for Refund is Submitted")
     date_refunded: Mapped[datetime] = mapped_column(DateTime(
@@ -42,7 +42,7 @@ class Refund(Base):
         UUID, ForeignKey("orders.id"), nullable=False, comment="(F.Key) Unique identifier for the Order.")
     order: Mapped["Order"] = relationship(uselist=False)
     items: Mapped[List["RefundItems"]] = relationship(
-        uselist=True, back_populates="refund")
+        uselist=True, back_populates="refund", cascade="all, delete-orphan", passive_deletes=True)
 
 # Relationship: 1-to-Many
 # Each Refund Order can have Multiple Items

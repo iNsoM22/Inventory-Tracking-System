@@ -15,18 +15,15 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
 
 @router.post("/add", response_model=OrderResponse)
 def create_order(order_data: OrderRequest, db: db_dependency):
-    # Validate Customer
     customer = db.query(Customer).filter(Customer.id == order_data.customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer Not Found")
 
-    # This is to ensure that the Product Information is Valid
     product_ids = [item.product_id for item in order_data.items]
     products = {p.id: p for p in db.query(Product).filter(Product.id.in_(product_ids)).all()}
 
     cart_items, total_amount, total_discount, total_tax = create_cart_items(order_data.items, products)
 
-    # Create new Order
     new_order = Order(
         customer_id=order_data.customer_id,
         order_amount=total_amount,
@@ -42,7 +39,7 @@ def create_order(order_data: OrderRequest, db: db_dependency):
     db.commit()
     db.refresh(new_order)
 
-    return new_order
+    return OrderResponse.model_validate(new_order)
 
 
 @router.get("/get/{order_id}", response_model=OrderResponse)
@@ -51,7 +48,8 @@ def get_order(order_id: UUID, db: db_dependency):
         order = db.query(Order).filter(Order.id == order_id).first()
         if not order:
             raise HTTPException(status_code=404, detail="Order Not Found")
-        return order
+        return OrderResponse.model_validate(order)
+    
     except HTTPException as e:
         raise e
     
@@ -121,7 +119,6 @@ def update_cart_items(order_id: UUID, items_update_request: List[CartItemUpdateR
         if not order:
             raise HTTPException(status_code=404, detail="Order Not Found")
         
-        # Convert list to dict for quick lookup
         cart_items_dict = {(item.product_id): item for item in order.items}
 
         for item_update in items_update_request:

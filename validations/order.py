@@ -31,14 +31,16 @@ class OrderBase(BaseModel):
     tax: float = Field(ge=0, description="Tax Amount applied to the Order")
     status: Literal["Pending",
                     "Received",
-                    "Cancelled"] = Field(default="Pending", 
-                              description="Order status. Can be Pending, Received or Cancelled")
+                    "Cancelled",
+                    "For Refund",
+                    "Refunded"] = Field(default="Pending", 
+                              description="Order status. Can be Pending, Received, Cancelled, For Refund, or Refunded")
     date_placed: Optional[datetime] = Field(default=None, description="Timestamp When the Order is Placed")
     date_received: Optional[datetime] = Field(default=None, description="Timestamp When the Order is Delivered to the Customer")
     order_mode: Literal["Online", "Offline"] = Field(default="Offline", description="Order mode, either Online or Offline")
     order_delivery_address: Optional[str] = Field(None, description="Delivery Address of the Customer")
     customer_id: UUID4 = Field(..., description="Unique identifier for the Customer")
-    items: List[CartItemBase] = Field(default=list, description="List of Cart Items in the Order")
+    items: List[CartItemBase] = Field(strict=True, description="List of Cart Items in the Order")
 
 
     model_config = ConfigDict(from_attributes=True)
@@ -55,8 +57,10 @@ class OrderRequest(OrderBase):
 class OrderUpdateRequest(BaseModel):
     status: Literal["Pending",
                     "Received",
-                    "Cancelled"] = Field(default="Pending", 
-                              description="Order status. Can be Pending, Received or Cancelled")
+                    "Cancelled",
+                    "For Refund",
+                    "Refunded"] = Field(default="Pending", 
+                              description="Order status. Can be Pending, Received, Cancelled, For Refund, or Refunded")
 
     @computed_field
     @property
@@ -68,6 +72,10 @@ class OrderUpdateRequest(BaseModel):
 
 class OrderResponse(OrderBase):
     id: UUID4 = Field(..., description="Unique identifier for the Order")
-    items: List[CartItemResponse] = Field(default_factory=list, description="List of Cart items in the order")
-    customer: Optional[CustomerResponse] = Field(None, description="Customer details")  
+    items: List[CartItemResponse] = Field(..., description="List of Cart items in the order")
     customer_id: UUID4 = Field(exclude=True, description="Unique identifier for the Customer")
+
+
+class OrderResponseWithCustomer(OrderResponse):
+    customer: Optional[CustomerResponse] = Field(None, description="Customer details")  
+    

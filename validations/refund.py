@@ -24,7 +24,7 @@ class RefundItemResponse(RefundItemBase):
 
 class RefundBase(BaseModel):
     reason: Optional[str] = Field(None, description="Reason for the Refund")
-    application_date: Optional[datetime] = Field(default=None, description="Timestamp When the Request for Refund is Placed")
+    application_date: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone), description="Timestamp When the Request for Refund is Placed")
     date_refunded: Optional[datetime] = Field(default=None, description="Timestamp When the Refund is Successful")
     status: Optional[
         Literal["Pending",
@@ -35,9 +35,9 @@ class RefundBase(BaseModel):
         ] = Field(default="Pending", 
             description="Application Status. Can be Pending, Approved, Rejected, Cancelled or Refunded.")
     
-    amount: float = Field(gt=0, description="Amout of the Refund")
+    amount: Optional[float] = Field(gt=0, description="Amout of the Refund")
     order_id: UUID4 = Field(..., description="Unique identifier for the Order")
-    items: List[RefundItemBase] = Field(default=list, description="List of Items to Refund")
+    items: List[RefundItemBase] = Field(strict=True, description="List of Items to Refund")
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -38,7 +38,7 @@ class Order(Base):
     tax: Mapped[float] = mapped_column(
         Float, nullable=False, default=0.0, comment="Tax Amount applied to the order.")
     status: Mapped[str] = mapped_column(
-        String, nullable=False, default="Pending", comment="Order status. Can be Pending, Received, or Cancelled.")
+        String, nullable=False, default="Pending", comment="Order status. Can be Pending, Received, Cancelled, For Refund, or Refunded.")
     date_placed: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(
         timezone.utc), comment="Timestamp When the Order is Placed.")
     date_received: Mapped[datetime] = mapped_column(DateTime(
