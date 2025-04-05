@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, UUID4, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, Field, UUID4, ConfigDict, model_validator, computed_field    
 from typing import Optional, List, Literal
 from datetime import datetime, timezone
 from .product import ProductResponseWithCategory
@@ -31,8 +31,8 @@ class OrderBase(BaseModel):
     tax: float = Field(ge=0, description="Tax Amount applied to the Order")
     status: Literal["Pending",
                     "Received",
-                    "Cancelled",
-                    "Refunded"] = Field(default="Pending", description="Order status. Can be Pending, Received, Cancelled, or Refunded")
+                    "Cancelled"] = Field(default="Pending", 
+                              description="Order status. Can be Pending, Received or Cancelled")
     date_placed: Optional[datetime] = Field(default=None, description="Timestamp When the Order is Placed")
     date_received: Optional[datetime] = Field(default=None, description="Timestamp When the Order is Delivered to the Customer")
     order_mode: Literal["Online", "Offline"] = Field(default="Offline", description="Order mode, either Online or Offline")
@@ -55,12 +55,12 @@ class OrderRequest(OrderBase):
 class OrderUpdateRequest(BaseModel):
     status: Literal["Pending",
                     "Received",
-                    "Cancelled",
-                    "Refunded"] = Field(default="Pending", 
-                              description="Order status. Can be Pending, Received, Cancelled, or Refunded")
+                    "Cancelled"] = Field(default="Pending", 
+                              description="Order status. Can be Pending, Received or Cancelled")
 
+    @computed_field
     @property
-    def date_received(self):
+    def date_received(self) -> datetime | None:
         if self.status == "Received":
             return datetime.now(timezone.utc)
         return None

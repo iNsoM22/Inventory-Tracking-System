@@ -1,6 +1,5 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, UUID4
 from typing import Optional
-from uuid import UUID
 
 class CustomerBase(BaseModel):
     first_name: str = Field(..., max_length=50, description="First Name of the Customer")
@@ -17,7 +16,7 @@ class CustomerRequest(CustomerBase):
 
 
 class CustomerResponse(CustomerBase):
-    id: UUID = Field(..., description="Unique Identifier for the Customer")
+    id: UUID4 = Field(..., description="Unique Identifier for the Customer")
     
 
 class CustomerUpdateRequest(CustomerBase):
