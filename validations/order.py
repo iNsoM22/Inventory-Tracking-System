@@ -48,6 +48,7 @@ class OrderBase(BaseModel):
     
          
 class OrderRequest(OrderBase):
+    store_id: UUID4 = Field(..., description="Store ID from Where the Order is Placed")
     @model_validator(mode="after")
     def validate_address(self):
         if self.order_mode == "Online" and not len(self.order_delivery_address):

@@ -9,6 +9,7 @@ from validations.refund import (
     RefundUpdateRequest,
     RefundResponse,
 )
+from utils.check_inventory import check_and_add_inventory
 
 
 router = APIRouter(prefix="/refunds", tags=["Refunds"])
@@ -22,7 +23,7 @@ def create_refund(refund_data: RefundRequest, db: db_dependency):
             raise HTTPException(status_code=404, detail="Order Not Found")
 
         refund_data.validate_application(order)
-        if refund_data.amount:
+        if not refund_data.amount:
             products_ordered = {p.product_id: p for p in order.items}
             total_amount = 0
             refund_items = []
@@ -43,7 +44,7 @@ def create_refund(refund_data: RefundRequest, db: db_dependency):
                     quantity=item.quantity
                 ) for item in refund_data.items
             ]
-
+            
         new_refund = Refund(
             reason=refund_data.reason,
             amount=refund_data.amount or total_amount,
@@ -53,7 +54,12 @@ def create_refund(refund_data: RefundRequest, db: db_dependency):
             items=refund_items
         )
         
-        order.status = "For Refund"
+        if refund_data.status == "Refunded":
+            order.status = "Refunded"
+            check_and_add_inventory(new_refund, operation_type="Sale", db=db)
+        
+        else:
+            order.status = "For Refund"
 
         db.add(new_refund)
         db.commit()
@@ -109,6 +115,10 @@ def update_refund(refund_id: UUID, update_data: RefundUpdateRequest, db: db_depe
             
         if update_data.reason:
             refund.reason = update_data.reason
+            
+        if update_data.status == "Refunded":
+            refund.order.status = "Refunded"
+            check_and_add_inventory(refund, operation_type="Sale", db=db)
 
         db.commit()
         db.refresh(refund)
@@ -141,4 +151,4 @@ def delete_refund(refund_id: UUID, db: db_dependency):
 
 # P.S: Once the Application is submitted, the Items selected for the Refund as well as their 
 # respective quantities cannot be changed. For this, Cancel the Previos Application and Submit a
-# new one.
+# new one. Also, the Delete End-Point is discouraged for usage due to Inventory Auditing issues.

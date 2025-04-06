@@ -21,11 +21,10 @@ def restore_inventory(db: Session, products: dict[UUID, int], add_stock: bool):
         if not inventory:
             raise HTTPException(
                 status_code=404,
-                detail=f"Product {product_id} not found in inventory.")
+                detail=f"Product {product_id} Not Found in Inventory.")
             
         if add_stock:
             inventory.quantity += quantity
         
         else:
             inventory.quantity = max(0, inventory.quantity - quantity)
-            

@@ -8,6 +8,7 @@ from schemas.order import Order
 from schemas.product import Product 
 from schemas.customer import Customer
 from validations.order import OrderRequest, OrderResponse, OrderUpdateRequest, CartItemUpdateRequest
+from utils.check_inventory import check_and_remove_inventory, check_and_add_inventory
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -34,6 +35,8 @@ def create_order(order_data: OrderRequest, db: db_dependency):
         order_mode=order_data.order_mode,
         items=cart_items
     )
+    
+    check_and_remove_inventory(new_order, order_data.store_id, db)
 
     db.add(new_order)
     db.commit()
@@ -81,6 +84,9 @@ def update_order(order_id: UUID, new_order_data: OrderUpdateRequest, db: db_depe
         order.status = new_order_data.status
         order.date_received = new_order_data.date_received
         
+        if new_order_data.status == "Cancelled":
+            check_and_add_inventory(order, operation_type="Sale", db=db)
+        
         db.commit()
         db.refresh(order)
         return OrderResponse.model_validate(order)
@@ -99,7 +105,8 @@ async def delete_order(order_id: UUID, db: db_dependency):
     
         if not order:
             raise HTTPException(status_code=404, detail="Order Not Found")
-
+        
+        check_and_add_inventory(order, operation_type="Sale", db=db)
         db.delete(order)
         db.commit()
         return {"detail": "Order and Related Cart Items have been deleted successfully."}

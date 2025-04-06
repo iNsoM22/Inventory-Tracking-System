@@ -30,7 +30,6 @@ def add_transaction(record, handler_id: UUID, db: db_dependency):
     
     transaction = Transaction(**validation_model.model_dump())
     db.add(transaction)
-    db.commit()
     
     
     
