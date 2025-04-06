@@ -19,7 +19,7 @@ class Transaction(Base):
     id: Mapped[UUID] = mapped_column(
         UUID, primary_key=True, default=uuid4, comment="Unique Identifier for Transactions.")
     type: Mapped[str] = mapped_column(
-        String(50), nullable=False, comment="Type of Transaction. Can be Restock, Sale, Refund or Product Removal.")
+        String(10), nullable=False, comment="Type of Transaction. Can be Restock, Sale, Refund or Removal.")
     operation_id: Mapped[UUID] = mapped_column(
         UUID, nullable=False, comment="(F.Key) Unique identifier for the Associated record.")
     handler_id: Mapped[UUID] = mapped_column(

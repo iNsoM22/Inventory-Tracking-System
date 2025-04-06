@@ -28,6 +28,8 @@ class Refund(Base):
 
     id: Mapped[UUID] = mapped_column(
         UUID, primary_key=True, default=uuid4, comment="Unique identifier for Refund Applications.")
+    store_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("stores.id"), nullable=False, index=True, comment="(F.Key) Unique identifier for the Store.")
     reason: Mapped[str] = mapped_column(
         String, nullable=False, comment="Reason for Refund.")
     amount: Mapped[float] = mapped_column(

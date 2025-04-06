@@ -7,6 +7,8 @@ from .transaction import Transaction
 from .base import Base
 from .restock import Restock
 from .removal import StockRemoval
+from .order import Order
+from .refund import Refund
 
 
 class Location(Base):
@@ -40,6 +42,8 @@ class Store(Base):
         uselist=True)
     restocks: Mapped[List["Restock"]] = relationship(uselist=True)
     removals: Mapped[List["StockRemoval"]] = relationship(uselist=True)
+    orders: Mapped[List["Order"]] = relationship(uselist=True)
+    refunds: Mapped[List["Refund"]] = relationship(uselist=True)
 
 
 # Relationship: 1-to-Many
