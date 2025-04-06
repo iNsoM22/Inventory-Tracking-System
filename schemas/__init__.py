@@ -7,7 +7,8 @@ from .product import Product
 from .refund import Refund, RefundItems
 from .restock import Restock, RestockItems
 from .store import Location, Store
-from .transaction import Transaction, StockRemoval, RemovalItems
+from .transaction import Transaction
+from .removal import StockRemoval, RemovalItems
 
 
 __all__ = [
