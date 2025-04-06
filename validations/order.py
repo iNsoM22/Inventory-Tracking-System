@@ -27,6 +27,7 @@ class CartItemResponse(CartItemBase):
 
 class OrderBase(BaseModel):
     order_amount: float = Field(gt=0, description="Price of the Order")
+    store_id: UUID4 = Field(..., description="Store Identifier where the Employee Works")
     discount_amount: float = Field(ge=0, description="Discounted Amount of the Order")
     tax: float = Field(ge=0, description="Tax Amount applied to the Order")
     status: Literal["Pending",
@@ -74,6 +75,11 @@ class OrderResponse(OrderBase):
     id: UUID4 = Field(..., description="Unique identifier for the Order")
     items: List[CartItemResponse] = Field(..., description="List of Cart items in the order")
     customer_id: UUID4 = Field(exclude=True, description="Unique identifier for the Customer")
+
+
+class OrderResponseWithOutStore(OrderResponse):
+    store_id: UUID4 = Field(exclude=True, description="Store Identifier where the Employee Works")
+    
 
 
 class OrderResponseWithCustomer(OrderResponse):

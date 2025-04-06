@@ -59,6 +59,9 @@ class StockRemovalUpdateRequest(BaseModel):
     is_cancelled: Optional[bool] = Field(None, description="Whether the Removal is Cancelled or Not")
 
 
+class StockRemovalResponseWithOutStore(StockRemovalBase):
+    id: UUID4 = Field(..., description="Stock Removal ID")
+
 
 class StockRemovalResponse(StockRemovalBase):
     id: UUID4 = Field(..., description="Stock Removal ID")

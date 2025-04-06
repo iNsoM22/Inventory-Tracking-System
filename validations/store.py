@@ -1,21 +1,32 @@
 from pydantic import BaseModel, Field, ConfigDict, UUID4
-from typing import Optional, List
+from typing import Optional, List, Literal
 from schemas.store import Store
 from datetime import datetime
 from .location import LocationBase
-from .employee import EmployeeBase
+from .employee import EmployeeResponseWithOutStore
 from .inventory import InventoryBase
-from .restock import RestockBase
-from .removal import StockRemovalBase
+from .restock import RestockResponseWithOutStore
+from .removal import StockRemovalResponseWithOutStore
+from .order import OrderResponseWithOutStore
+from .refund import RefundResponseWithOutStore
+
+
 
 class TransactionBase(BaseModel):
-    type: str = Field(..., max_length=50, description="Type of Transaction (Restock, Sale, Refund, Removal)")
+    type: Literal[
+        "Restock", 
+        "Sale", 
+        "Refund",
+        "Removal"] = Field(..., max_length=10, description="Type of Transaction (Restock, Sale, Refund, Removal)")
     operation_id: UUID4 = Field(..., description="Associated Operation ID")
     handler_id: UUID4 = Field(..., description="ID of the Employee handling the transaction")
-    store_id: UUID4 = Field(..., description="ID of the Store where the transaction occurred")
     date: Optional[datetime] = Field(None, description="Timestamp of when the transaction occurred")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TransactionResponseWithOutStore(TransactionBase):
+    id: UUID4 = Field(..., description="Unique Transaction Identifier")
 
 
 class TransactionResponse(TransactionBase):
@@ -24,8 +35,7 @@ class TransactionResponse(TransactionBase):
 
 
 class TransactionResponseWithRelations(TransactionResponse):
-    handler: Optional[EmployeeBase] = Field(None, description="Employee handling the transaction")
-    store: Optional["StoreBase"] = Field(None, description="Store where the transaction took place")
+    handler: Optional[EmployeeResponseWithOutStore] = Field(None, description="Employee handling the transaction")
 
 
 
@@ -36,7 +46,7 @@ class StoreBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class StoreCreateRequest(StoreBase):
+class StoreRequest(StoreBase):
     pass
 
 
@@ -52,33 +62,38 @@ class StoreResponse(StoreBase):
 
 
 class StoreResponseWithRelations(StoreResponse):
+    location_id: int = Field(exclude=True, gt=0, description="Unique identifier for the Location")
     location: Optional[LocationBase] = Field(None, description="Store Location Details")
-    employees: Optional[List[EmployeeBase]] = Field(default_factory=list, description="List of Store Employees")
+    employees: Optional[List[EmployeeResponseWithOutStore]] = Field(default_factory=list, description="List of Store Employees")
     inventory: Optional[List[InventoryBase]] = Field(default_factory=list, description="List of Inventory Items")
-    restocks: Optional[List[RestockBase]] = Field(default_factory=list, description="List of Restock Orders")
-    removals: Optional[List[StockRemovalBase]] = Field(default_factory=list, description="List of Stock Removals")
-    transactions: Optional[List[TransactionBase]] = Field(default_factory=list, description="List of Store Transactions")
-    
-    
+    restocks: Optional[List[RestockResponseWithOutStore]] = Field(default_factory=list, description="List of Restock Orders")
+    removals: Optional[List[StockRemovalResponseWithOutStore]] = Field(default_factory=list, description="List of Stock Removals")
+    transactions: Optional[List[TransactionResponseWithOutStore]] = Field(default_factory=list, description="List of Store Transactions")
+    orders: Optional[List[OrderResponseWithOutStore]] = Field(default_factory=list, description="List of Store Orders")
+    refunds: Optional[List[RefundResponseWithOutStore]] = Field(default_factory=list, description="List of Store Refunds")
+
     @classmethod
     def include_related_information(
-                                    cls,
-                                    store_object: Store,
-                                    include_location=True,
-                                    include_inventories=True,
-                                    include_employees=False,
-                                    include_transactions=False,
-                                    include_restocks=False,
-                                    include_removals=False):
-    
+        cls,
+        store_object: Store,
+        include_inventories=True,
+        include_employees=False,
+        include_transactions=False,
+        include_restocks=False,
+        include_removals=False,
+        include_orders=False,
+        include_refunds=False
+    ):
         return cls(
             id=store_object.id,
             name=store_object.name,
             location_id=store_object.location_id,
-            location=LocationBase(store_object.location) if include_location and store_object.location else None,
+            location=LocationBase(store_object.location),
             inventory=[InventoryBase.model_validate(item) for item in store_object.inventory] if include_inventories else [],
-            employees=[EmployeeBase.model_validate(emp) for emp in store_object.employees] if include_employees else [],
-            restocks=[RestockBase.model_validate(r) for r in store_object.restocks] if include_restocks else [],
-            removals=[StockRemovalBase.model_validate(rm) for rm in store_object.removals] if include_removals else [],
-            transactions=[TransactionBase.model_validate(tx) for tx in store_object.transactions] if include_transactions else [],
-         )
+            employees=[EmployeeResponseWithOutStore.model_validate(emp) for emp in store_object.employees] if include_employees else [],
+            restocks=[RestockResponseWithOutStore.model_validate(r) for r in store_object.restocks] if include_restocks else [],
+            removals=[StockRemovalResponseWithOutStore.model_validate(rm) for rm in store_object.removals] if include_removals else [],
+            transactions=[TransactionResponseWithOutStore.model_validate(tx) for tx in store_object.transactions] if include_transactions else [],
+            orders=[OrderResponseWithOutStore.model_validate(order) for order in store_object.orders] if include_orders else [],
+            refunds=[RefundResponseWithOutStore.model_validate(ref) for ref in store_object.refunds] if include_refunds else [],
+        )

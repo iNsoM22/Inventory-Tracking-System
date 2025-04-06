@@ -72,6 +72,10 @@ class EmployeeResponse(EmployeeBase):
         return value.role
 
 
+class EmployeeResponseWithOutStore(EmployeeResponse):
+    store_id: UUID4 = Field(exclude=True, default=None, description="Store Identifier where the Employee Works")
+
+
 
 class EmployeeUpdateRequest(BaseModel):
     id: UUID4 = Field(..., description="Unique Identifier for the Employee")
@@ -86,6 +90,7 @@ class EmployeeUpdateRequest(BaseModel):
     store_id: Optional[UUID4] = Field(None, description="Store Identifier where the Employee Works")
     
     model_config = ConfigDict(from_attributes=True)
+
 
 class EmployeeDeleteRequest(BaseModel):
     id: UUID4 = Field(..., description="Unique Identifier for the Employee")

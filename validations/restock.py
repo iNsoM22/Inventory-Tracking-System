@@ -60,7 +60,12 @@ class RestockUpdateRequest(BaseModel):
         return None
 
 
-class RestockResponse(RestockBase):
+class RestockResponseWithOutStore(RestockBase):
     id: UUID4 = Field(..., description="Unique identifier for Restock")
-    store_id: UUID4 = Field(..., description="Store Identifier where the Employee Works")
     items: List[RestockItemResponse] = Field(default=list, description="List of Restocked Items")
+    
+    
+class RestockResponse(RestockResponseWithOutStore):
+    store_id: UUID4 = Field(..., description="Store Identifier where the Employee Works")
+
+

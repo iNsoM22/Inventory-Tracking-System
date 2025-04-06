@@ -23,6 +23,7 @@ class RefundItemResponse(RefundItemBase):
 
 
 class RefundBase(BaseModel):
+    store_id: UUID4 = Field(..., description="Store ID")
     reason: Optional[str] = Field(None, description="Reason for the Refund")
     application_date: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone), description="Timestamp When the Request for Refund is Placed")
     date_refunded: Optional[datetime] = Field(default=None, description="Timestamp When the Refund is Successful")
@@ -96,3 +97,7 @@ class RefundUpdateRequest(BaseModel):
 class RefundResponse(RefundBase):
     id: UUID4 = Field(..., description="Unique identifier for the Order")
     items: List[RefundItemResponse] = Field(default=list, description="List of Items to Refund")
+
+
+class RefundResponseWithOutStore(RefundResponse):
+    store_id: UUID4 = Field(exclude=True, description="Store ID")

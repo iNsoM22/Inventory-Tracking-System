@@ -20,10 +20,9 @@ class InventoryRequest(InventoryBase):
     store_id: UUID4 = Field(..., description="Unique identifier for the Store")
 
 
-
 class InventoryResponse(InventoryBase):
-    store_id: UUID4 = Field(..., description="Unique identifier for the Store")
-
+    store_id: UUID4 = Field(..., description="Unique identifier for the Store")    
+    
 
 class InventoryUpdateRequest(BaseModel):
     product_id: UUID4 = Field(..., description="Unique identifier for the Product")
