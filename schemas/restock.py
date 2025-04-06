@@ -36,7 +36,7 @@ class Restock(Base):
     date_placed: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(
         timezone.utc), comment="Timestamp When the Restock Order is Placed.")
     date_received: Mapped[datetime] = mapped_column(DateTime(
-        timezone=True), comment="Timestamp When the Restock Order is Delivered.")
+        timezone=True),nullable=True, comment="Timestamp When the Restock Order is Delivered.")
     items: Mapped[List["RestockItems"]] = relationship(
         uselist=True, back_populates="restock", cascade="all, delete-orphan", passive_deletes=True)
 

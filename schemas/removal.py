@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, DateTime, UUID, ForeignKey, Integer
+from sqlalchemy import String, DateTime, UUID, ForeignKey, Integer, Boolean
 from datetime import datetime, timezone
 from uuid import uuid4
 from typing import List
@@ -34,6 +34,7 @@ class StockRemoval(Base):
         String, nullable=False, comment="Removal Resaon. Can be Expired, Damaged, Lost, Internal Use, Return to Supplier, or Adjustment.")
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(
         timezone.utc), comment="Timestamp When the Transaction is Made.")
+    is_canceled: Mapped[bool] = mapped_column(Boolean, default=False, comment="Identifier to represent Cancellation of Removal Operation") 
     store_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("stores.id"), nullable=False, index=True, comment="(F.Key) Unique identifier for the Store.")    
     
