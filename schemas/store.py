@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, ForeignKey, Integer
+from sqlalchemy import String, ForeignKey, Integer, UUID
 from typing import List
 from .employee import Employee
 from .inventory import Inventory
@@ -9,6 +9,7 @@ from .restock import Restock
 from .removal import StockRemoval
 from .order import Order
 from .refund import Refund
+from uuid import uuid4
 
 
 class Location(Base):
@@ -26,7 +27,7 @@ class Location(Base):
 class Store(Base):
     __tablename__ = 'stores'
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="Primary Key for the Store.")
+    id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4, comment="Primary Key for the Store.")
     name: Mapped[str] = mapped_column(
         String(50), nullable=False, comment="Name of the Store.")
     location_id: Mapped[int] = mapped_column(

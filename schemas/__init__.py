@@ -9,6 +9,7 @@ from .restock import Restock, RestockItems
 from .store import Location, Store
 from .transaction import Transaction
 from .removal import StockRemoval, RemovalItems
+from .user import User
 
 
 __all__ = [
@@ -28,5 +29,6 @@ __all__ = [
     "Store",
     "Transaction",
     "StockRemoval",
-    "RemovalItems"
+    "RemovalItems",
+    "User"
 ]
