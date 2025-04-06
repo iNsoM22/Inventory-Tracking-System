@@ -36,7 +36,7 @@ class StockRemoval(Base):
         timezone.utc), comment="Timestamp When the Transaction is Made.")
     is_canceled: Mapped[bool] = mapped_column(Boolean, default=False, comment="Identifier to represent Cancellation of Removal Operation") 
     store_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("stores.id"), nullable=False, index=True, comment="(F.Key) Unique identifier for the Store.")    
+        UUID, ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False, index=True, comment="(F.Key) Unique identifier for the Store.")    
     
     items: Mapped[List["RemovalItems"]] = relationship(
         uselist=True, back_populates="removal_order", cascade="all, delete-orphan", passive_deletes=True)

@@ -1,5 +1,5 @@
 from sqlalchemy.orm import declarative_base, mapped_column, Mapped
-from sqlalchemy import String, UUID
+from sqlalchemy import String, UUID, ForeignKey
 from uuid import uuid4
 from .base import Base
 
@@ -21,3 +21,5 @@ class Customer(Base):
         String, unique=True, nullable=True, comment="Email of the Customer.")
     address: Mapped[str] = mapped_column(
         String(200), nullable=True, comment="Address of the Customer.")
+    user_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("users.id"), nullable=True, unique=True, comment="(F.Key) Identifier for Users.")

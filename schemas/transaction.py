@@ -27,7 +27,7 @@ class Transaction(Base):
     date: Mapped[datetime] = mapped_column(DateTime(
         timezone=True), comment="Timestamp When the Transaction is Made.")
     store_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("stores.id"), index=True, nullable=False, comment="(F.Key) Unique identifier for the Store.")
+        UUID, ForeignKey("stores.id", ondelete="RESTRICT"), index=True, nullable=False, comment="(F.Key) Unique identifier for the Store.")
 
     handler: Mapped["Employee"] = relationship(uselist=False)
 

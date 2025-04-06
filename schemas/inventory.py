@@ -8,7 +8,7 @@ class Inventory(Base):
     __tablename__ = 'inventory'
 
     store_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("stores.id"), primary_key=True, comment="(F.Key) Unique identifier for the Store.")
+        UUID, ForeignKey("stores.id", ondelete="RESTRICT"), primary_key=True, comment="(F.Key) Unique identifier for the Store.")
     product_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("products.id"), primary_key=True, comment="(F.Key) Unique identifier for the Product.")
     quantity: Mapped[int] = mapped_column(

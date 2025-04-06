@@ -30,7 +30,7 @@ class Restock(Base):
     id: Mapped[UUID] = mapped_column(
         UUID, primary_key=True, default=uuid4, comment="Unique identifier for Restock Orders.")
     store_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("stores.id"), nullable=False, index=True, comment="(F.Key) Unique identifier for the Store.")    
+        UUID, ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False, index=True, comment="(F.Key) Unique identifier for the Store.")    
     status: Mapped[str] = mapped_column(
         String, nullable=False, default="Pending", comment="Restock Status. Can be Pending, Completed or Cancelled.")
     date_placed: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(

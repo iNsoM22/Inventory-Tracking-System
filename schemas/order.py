@@ -32,7 +32,7 @@ class Order(Base):
     id: Mapped[UUID] = mapped_column(
         UUID, primary_key=True, default=uuid4, comment="Unique identifier for the Order.")
     store_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("stores.id"), nullable=False, index=True, comment="(F.Key) Unique identifier for the Store.")
+        UUID, ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False, index=True, comment="(F.Key) Unique identifier for the Store.")
     order_amount: Mapped[float] = mapped_column(
         Float, nullable=False, default=0.0, comment="Price of the Order.")
     discount_amount: Mapped[float] = mapped_column(
@@ -50,11 +50,11 @@ class Order(Base):
     order_delivery_address: Mapped[str] = mapped_column(String(200), 
                                                 nullable=True, comment="Delivery Address for the Order.")
     customer_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("customers.id"), nullable=False, comment="(F.Key) Unique identifier for the Customer.")
+        UUID, ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False, comment="(F.Key) Unique identifier for the Customer.")
 
     items: Mapped[List["CartItems"]] = relationship(
         uselist=True, back_populates="order", cascade="all, delete-orphan", passive_deletes=True)
-    customer: Mapped["Customer"] = relationship(uselist=False)
+    customer: Mapped["Customer"] = relationship(uselist=False, passive_deletes=True)
 
 
 # Relationship: 1-to-Many

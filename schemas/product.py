@@ -33,7 +33,7 @@ class Product(Base):
     is_removed: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, comment="Product Removal Indicator.")
     category_id: Mapped[int] = mapped_column(
-        ForeignKey("categories.id"), nullable=False, comment="(F.K) Category of the Product.")
+        ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False, comment="(F.K) Category of the Product.")
     category: Mapped["Category"] = relationship(
         uselist=False, back_populates="products")
 

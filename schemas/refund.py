@@ -29,7 +29,7 @@ class Refund(Base):
     id: Mapped[UUID] = mapped_column(
         UUID, primary_key=True, default=uuid4, comment="Unique identifier for Refund Applications.")
     store_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("stores.id"), nullable=False, index=True, comment="(F.Key) Unique identifier for the Store.")
+        UUID, ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False, index=True, comment="(F.Key) Unique identifier for the Store.")
     reason: Mapped[str] = mapped_column(
         String, nullable=False, comment="Reason for Refund.")
     amount: Mapped[float] = mapped_column(
@@ -41,8 +41,8 @@ class Refund(Base):
     date_refunded: Mapped[datetime] = mapped_column(DateTime(
         timezone=True), nullable=True, comment="Timestamp When the Refund is Successful.")
     order_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("orders.id"), nullable=False, comment="(F.Key) Unique identifier for the Order.")
-    order: Mapped["Order"] = relationship(uselist=False)
+        UUID, ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False, comment="(F.Key) Unique identifier for the Order.")
+    order: Mapped["Order"] = relationship(uselist=False, passive_deletes=True)
     items: Mapped[List["RefundItems"]] = relationship(
         uselist=True, back_populates="refund", cascade="all, delete-orphan", passive_deletes=True)
 

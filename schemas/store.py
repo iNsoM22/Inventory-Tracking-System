@@ -20,7 +20,7 @@ class Location(Base):
     address: Mapped[str] = mapped_column(
         String, nullable=False, comment="Address of the Location.")
     stores: Mapped[List["Store"]] = relationship(
-        uselist=True, back_populates="location")
+        uselist=True, back_populates="location", passive_deletes=True)
 
 
 class Store(Base):
@@ -30,20 +30,20 @@ class Store(Base):
     name: Mapped[str] = mapped_column(
         String(50), nullable=False, comment="Name of the Store.")
     location_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("locations.id"), nullable=False, comment="(F.K) Unique identifier for the Location.")
+        Integer, ForeignKey("locations.id", ondelete="RESTRICT"), nullable=False, comment="(F.K) Unique identifier for the Location.")
 
     location: Mapped["Location"] = relationship(
-        uselist=False, back_populates="stores")
+        uselist=False, back_populates="stores", passive_deletes=True)
     employees: Mapped[List["Employee"]] = relationship(
-        uselist=True, back_populates="store")
+        uselist=True, back_populates="store", passive_deletes=True)
     inventory: Mapped[List["Inventory"]] = relationship(
-        uselist=True)
+        uselist=True, passive_deletes=True)
     transactions: Mapped[List["Transaction"]] = relationship(
-        uselist=True)
-    restocks: Mapped[List["Restock"]] = relationship(uselist=True)
-    removals: Mapped[List["StockRemoval"]] = relationship(uselist=True)
-    orders: Mapped[List["Order"]] = relationship(uselist=True)
-    refunds: Mapped[List["Refund"]] = relationship(uselist=True)
+        uselist=True, passive_deletes=True)
+    restocks: Mapped[List["Restock"]] = relationship(uselist=True, passive_deletes=True)
+    removals: Mapped[List["StockRemoval"]] = relationship(uselist=True, passive_deletes=True)
+    orders: Mapped[List["Order"]] = relationship(uselist=True, passive_deletes=True)
+    refunds: Mapped[List["Refund"]] = relationship(uselist=True, passive_deletes=True)
 
 
 # Relationship: 1-to-Many

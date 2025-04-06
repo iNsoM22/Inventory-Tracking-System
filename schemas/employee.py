@@ -39,10 +39,11 @@ class Employee(Base):
     address: Mapped[str] = mapped_column(
         String(200), nullable=False, comment="Address of the Employee.")
     level: Mapped[int] = mapped_column(
-        Integer, ForeignKey("roles.level"), nullable=False, comment="(F.Key) Identifier for Role Level.")
+        Integer, ForeignKey("roles.level", ondelete="RESTRICT"), nullable=False, comment="(F.Key) Identifier for Role Level.")
     store_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("stores.id"), nullable=False, comment="(F.Key) Identifier for Stores.")
-
+        UUID, ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False, comment="(F.Key) Identifier for Stores.")
+    user_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("users.id"), nullable=True, unique=True, comment="(F.Key) Identifier for Users.")
     role = relationship("Role", back_populates="employees")
 
 # Relationship: 1-to-Many
