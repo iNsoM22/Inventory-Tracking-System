@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
 from uuid import UUID
-from datetime import datetime, timezone
 from utils.db import db_dependency
 from validations.inventory import InventoryRequest
-from validations.restock import RestockRequest, RestockResponse, RestockUpdateRequest, RestockItemRequest
+from validations.restock import RestockRequest, RestockResponse, RestockUpdateRequest
 from schemas.product import Product
 from schemas.restock import Restock, RestockItems
 from schemas.inventory import Inventory
+from utils.stock_restore import restore_inventory
 
 
 router = APIRouter(prefix="/restocks", tags=["Restocks"])
@@ -27,9 +27,6 @@ def create_restock(restock_data: RestockRequest, db: db_dependency):
     new_inventory_records = []
 
     for item in restock_data.items:
-        if item.product_id not in products:
-            raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found.")
-
         product_in_store_inventory = products_in_store_inventory.get(item.product_id, None)
         
         if not product_in_store_inventory:
@@ -106,6 +103,10 @@ def update_restock(restock_id: UUID, new_data: RestockUpdateRequest, db: db_depe
         if new_data.date_received is not None:
             restock.date_received = new_data.date_received
         
+        if new_data.status == "Cancelled":
+            products = {p.id: p.restock_quantity for p in restock.items}
+            restore_inventory(db, products, add_stock=False)
+
         db.commit()
         db.refresh(restock)
         return RestockResponse.model_validate(restock)
@@ -123,7 +124,10 @@ def delete_restock(restock_id: UUID, db: db_dependency):
         restock = db.query(Restock).filter(Restock.id == restock_id).first()
         if not restock:
             raise HTTPException(status_code=404, detail="Restock Record Not Found.")
-
+        
+        products = {p.id: p.restock_quantity for p in restock.items}
+        restore_inventory(db, products, add_stock=False)
+        
         db.delete(restock)
         db.commit()
         return {"detail": "Restock Record Deleted Successfully."}
