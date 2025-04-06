@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
-from validations.customer import CustomerRequest, CustomerResponse, CustomerUpdateRequest
+from validations.customer import CustomerRequest, CustomerResponse, CustomerUpdateRequest, CustomerUserIDUpdateRequest
 from utils.db import db_dependency
 from schemas.customer import Customer
 from uuid import UUID
@@ -24,6 +24,7 @@ async def add_customers(customers: List[CustomerRequest], db: db_dependency):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error Adding Customers: {str(e)}")
 
+
 @router.get("/all", response_model=List[CustomerResponse])
 async def get_customers(limit: int | None, offset: int | None, db: db_dependency):
     """Get All Customers from the Database."""
@@ -36,6 +37,7 @@ async def get_customers(limit: int | None, offset: int | None, db: db_dependency
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error Fetching Customer Records: {str(e)}")
     
+
 
 @router.get("/get/{customer_id}", response_model=CustomerResponse)
 async def get_customer(customer_id: UUID, db: db_dependency):
@@ -51,6 +53,7 @@ async def get_customer(customer_id: UUID, db: db_dependency):
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error Fetching Customer: {str(e)}")
+    
     
 
 @router.put("/mod/{customer_id}", response_model=CustomerResponse)
@@ -74,6 +77,28 @@ async def update_customer(customer_id: UUID, update_data: CustomerUpdateRequest,
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error Updating Customer: {str(e)}")
 
+
+@router.put("/employee/mod/{customer_id}", response_model=CustomerResponse)
+async def update_employee_user_id(customer_id: UUID, new_data: CustomerUserIDUpdateRequest, db: db_dependency):
+    """Update User ID for a Specific Customer."""
+    try:
+        customer_to_update = db.query(Customer).filter(Customer.id == customer_id).first()
+        
+        if not customer_to_update:
+            raise HTTPException(status_code=404, detail="Employee Not Found")
+        
+        customer_to_update.user_id = new_data.user_id
+        db.commit()
+        db.refresh(customer_to_update)
+        
+        return CustomerResponse.model_validate(customer_to_update)
+    
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error Updating Employee User ID: {str(e)}")
+    
 
 @router.delete("/del/{customer_id}", status_code=204)
 async def delete_customer(customer_id: UUID, db: db_dependency):

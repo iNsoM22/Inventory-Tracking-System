@@ -7,6 +7,7 @@ class CustomerBase(BaseModel):
     email: Optional[str] = Field(None, description="Email of the Customer")
     phone_number: str = Field(..., description="Phone of the Customer")
     address: Optional[str] = Field(None, description="Address of the Customer")
+    user_id: UUID4 = Field(..., description="User ID for the Employee")
     
     model_config = ConfigDict(from_attributes=True)
     
@@ -25,3 +26,5 @@ class CustomerUpdateRequest(CustomerBase):
     phone_number: Optional[str] = Field(None, description="Phone of the Customer")
     
     
+class CustomerUserIDUpdateRequest(BaseModel):
+    user_id: UUID4 = Field(..., description="User ID for the Customer")

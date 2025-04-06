@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
 from uuid import UUID
-from validations.employee import EmployeeRequest, EmployeeResponse, EmployeeUpdateRequest, EmployeeDeleteRequest
+from validations.employee import EmployeeRequest, EmployeeResponse, EmployeeUpdateRequest, EmployeeDeleteRequest, EmployeeUserIDUpdateRequest
 from utils.db import db_dependency 
 from schemas.employee import Employee
 
@@ -92,6 +92,29 @@ async def update_employee(employees_data: List[EmployeeUpdateRequest], db: db_de
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error Updating Employee: {str(e)}")
+
+
+@router.put("/employee/mod/{employee_id}", response_model=EmployeeResponse)
+async def update_employee_user_id(employee_id: UUID, new_data: EmployeeUserIDUpdateRequest, db: db_dependency):
+    """Update User ID for a Specific Employee."""
+    try:
+        employee_to_update = db.query(Employee).filter(Employee.id == employee_id).first()
+        
+        if not employee_to_update:
+            raise HTTPException(status_code=404, detail="Employee Not Found")
+        
+        employee_to_update.user_id = new_data.user_id
+        db.commit()
+        db.refresh(employee_to_update)
+        
+        return EmployeeResponse.model_validate(employee_to_update)
+    
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error Updating Employee User ID: {str(e)}")
+    
 
 
 @router.delete("/employee/del", status_code=204)

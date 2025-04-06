@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict, UUID4
 from typing import Optional, List, Literal
 from schemas.store import Store
-from datetime import datetime
+from datetime import datetime, timezone
 from .location import LocationBase
 from .employee import EmployeeResponseWithOutStore
 from .inventory import InventoryBase
@@ -20,7 +20,7 @@ class TransactionBase(BaseModel):
         "Removal"] = Field(..., max_length=10, description="Type of Transaction (Restock, Sale, Refund, Removal)")
     operation_id: UUID4 = Field(..., description="Associated Operation ID")
     handler_id: UUID4 = Field(..., description="ID of the Employee handling the transaction")
-    date: Optional[datetime] = Field(None, description="Timestamp of when the transaction occurred")
+    date: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), description="Timestamp of when the transaction occurred")
 
     model_config = ConfigDict(from_attributes=True)
 

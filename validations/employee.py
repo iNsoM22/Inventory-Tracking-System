@@ -53,6 +53,8 @@ class EmployeeBase(BaseModel):
     hire_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), 
                                 description="Hire Date of the Employee")
     leave_date: Optional[datetime] = Field(None, description="Leave Date of the Employee")
+    user_id: UUID4 = Field(..., description="(F.K) Unique Identifier for the User ID")
+    
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -87,9 +89,14 @@ class EmployeeUpdateRequest(BaseModel):
     email: Optional[EmailStr] = Field(None, description="Email of the Employee")
     address: Optional[str] = Field(None, max_length=200, description="Address of the Employee")
     level: Optional[UUID4] = Field(None, description="Role Level Identifier")
-    store_id: Optional[UUID4] = Field(None, description="Store Identifier where the Employee Works")
+    store_id: Optional[UUID4] = Field(None, description="Store Identifier where the Employee Works") 
     
     model_config = ConfigDict(from_attributes=True)
+
+
+class EmployeeUserIDUpdateRequest(BaseModel):
+    user_id: UUID4 = Field(..., description="User ID for the Employee")
+    new_user_id: UUID4 = Field(..., description="New User ID for the Employee")
 
 
 class EmployeeDeleteRequest(BaseModel):
