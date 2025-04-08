@@ -2,7 +2,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, DateTime, UUID, ForeignKey
 from datetime import datetime
 from uuid import uuid4
-from .employee import Employee
+from .user import User
 from .base import Base
 
 
@@ -17,20 +17,46 @@ class Transaction(Base):
     __tablename__ = 'transactions'
 
     id: Mapped[UUID] = mapped_column(
-        UUID, primary_key=True, default=uuid4, comment="Unique Identifier for Transactions.")
+        UUID,
+        primary_key=True,
+        default=uuid4,
+        comment="Unique Identifier for Transactions."
+    )
     type: Mapped[str] = mapped_column(
-        String(10), nullable=False, comment="Type of Transaction. Can be Restock, Sale, Refund or Removal.")
+        String(10),
+        nullable=False,
+        comment="Type of Transaction. Can be Restock, Sale, Refund or Removal."
+    )
+    date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        comment="Timestamp When the Transaction is Made."
+    )
     operation_id: Mapped[UUID] = mapped_column(
-        UUID, nullable=False, comment="(F.Key) Unique identifier for the Associated record.")
-    handler_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("employees.id"), nullable=False, comment="(F.Key) Unique identifier for the Employee.")
-    date: Mapped[datetime] = mapped_column(DateTime(
-        timezone=True), comment="Timestamp When the Transaction is Made.")
+        UUID,
+        nullable=False,
+        unique=True,
+        comment="(F.Key) Unique identifier for the Associated record."
+    )
+    request_made_by: Mapped[UUID] = mapped_column(
+        UUID,
+        ForeignKey("users.id"),
+        nullable=False,
+        comment="(F.Key) Unique identifier for the User."
+    )
     store_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("stores.id", ondelete="RESTRICT"), index=True, nullable=False, comment="(F.Key) Unique identifier for the Store.")
+        UUID,
+        ForeignKey("stores.id", ondelete="RESTRICT"),
+        index=True,
+        nullable=False,
+        comment="(F.Key) Unique identifier for the Store."
+    )
 
-    handler: Mapped["Employee"] = relationship(uselist=False)
+    ###############
+    # Relationships
+    ###############
+
+    user: Mapped["User"] = relationship(uselist=False)
 
 # Relationship: 1-to-1
-# Each Operation would be Handled by a Single Employee
+# Each Operation would be Requested by a User
 # Each Operation has to be Performed from a Particular Store
