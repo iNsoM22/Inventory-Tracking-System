@@ -10,17 +10,51 @@ from .base import Base
 class RemovalItems(Base):
     __tablename__ = "removal_items"
 
-    removal_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("stock_removals.id", ondelete="CASCADE"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Stocks Removal.")
-    product_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("products.id"), primary_key=True, nullable=False, comment="(F.Key) Unique identifier for the Product.")
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+        comment="Surrogate Identifier for Removal Items."
+    )
     previous_quantity: Mapped[int] = mapped_column(
-        Integer, nullable=False, comment="Quantity of the Product before Removal.")
+        Integer,
+        nullable=False,
+        comment="Quantity of the Product before Removal."
+    )
     removal_quantity: Mapped[int] = mapped_column(
-        Integer, nullable=False, comment="Quantity of the Product for Removal.")
-    product: Mapped["Product"] = relationship(uselist=False)
+        Integer,
+        nullable=False,
+        comment="Quantity of the Product for Removal."
+    )
+
+    ###############
+    # Foreign Keys
+    ###############
+
+    removal_id: Mapped[UUID] = mapped_column(
+        UUID,
+        ForeignKey("stock_removals.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+        comment="(F.Key) Unique identifier for the Stocks Removal."
+    )
+    product_id: Mapped[UUID] = mapped_column(
+        UUID,
+        ForeignKey("products.id"),
+        primary_key=True,
+        nullable=False,
+        comment="(F.Key) Unique identifier for the Product."
+    )
+
+    ################
+    # Relationships
+    ################
+
     removal_order: Mapped["StockRemoval"] = relationship(
-        uselist=False, back_populates="items")
+        uselist=False,
+        back_populates="items"
+    )
+    product: Mapped["Product"] = relationship(uselist=False)
 
 
 # Table for storing the Product Items that have been removed from the Inventory.
@@ -29,17 +63,51 @@ class StockRemoval(Base):
     __tablename__ = 'stock_removals'
 
     id: Mapped[UUID] = mapped_column(
-        UUID, primary_key=True, default=uuid4, comment="Unique Identifier for Stock Removal.")
+        UUID,
+        primary_key=True,
+        default=uuid4,
+        comment="Unique Identifier for Stock Removal."
+    )
     removal_reason: Mapped[str] = mapped_column(
-        String, nullable=False, comment="Removal Resaon. Can be Expired, Damaged, Lost, Internal Use, Return to Supplier, or Adjustment.")
-    date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(
-        timezone.utc), comment="Timestamp When the Transaction is Made.")
-    is_canceled: Mapped[bool] = mapped_column(Boolean, default=False, comment="Identifier to represent Cancellation of Removal Operation") 
+        String(15),
+        nullable=False,
+        comment="Removal Resaon. Can be Expired, Damaged, Lost, Internal Use, \
+        Return to Supplier, or Adjustment."
+    )
+    date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        comment="Timestamp When the Transaction is Made."
+    )
+    is_canceled: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        comment="Identifier to represent Cancellation of Removal Operation"
+    )
+
+    ###############
+    # Foreign Keys
+    ###############
+
     store_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False, index=True, comment="(F.Key) Unique identifier for the Store.")    
-    
+        UUID,
+        ForeignKey("stores.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        comment="(F.Key) Unique identifier for the Store."
+    )
+
+    ################
+    # Relationships
+    ################
+
     items: Mapped[List["RemovalItems"]] = relationship(
-        uselist=True, back_populates="removal_order", cascade="all, delete-orphan", passive_deletes=True)
+        uselist=True,
+        back_populates="removal_order",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
 
 
 # Relationship: 1-to-1

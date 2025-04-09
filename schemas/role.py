@@ -9,24 +9,24 @@ from .user import User
 # Also, the Higher Level allows the use of Complex and Important Functional APIs.
 class Role(Base):
     __tablename__ = 'roles'
-    
+
     level: Mapped[int] = mapped_column(
-        Integer, 
-        primary_key=True, 
+        Integer,
+        primary_key=True,
         comment="Role Level of the User."
-        )
+    )
     role: Mapped[str] = mapped_column(
-        String(30), 
-        nullable=False, 
+        String(30),
+        nullable=False,
         unique=True,
         comment="Role of the User."
-        )
-    
+    )
+
     ###############
     # Relationships
     ###############
-    
+
     users: Mapped[List["User"]] = relationship(
         back_populates="role",
         uselist=True
-        )
+    )

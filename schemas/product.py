@@ -7,13 +7,27 @@ from .base import Base
 
 class Category(Base):
     __tablename__ = 'categories'
+
     id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True, comment="Unique Identifier for the Category.")
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+        comment="Unique Identifier for the Category."
+    )
     category: Mapped[str] = mapped_column(
-        String, nullable=False, comment="Name of the Category.")
+        String,
+        nullable=False,
+        comment="Name of the Category."
+    )
+
+    ###############
+    # Relationship
+    ###############
 
     products: Mapped[List["Product"]] = relationship(
-        uselist=True, back_populates="category")
+        uselist=True,
+        back_populates="category"
+    )
 
 
 # Removal of a Product from the Database will not be allowed, due to dependencies.
@@ -23,19 +37,52 @@ class Product(Base):
     __tablename__ = 'products'
 
     id: Mapped[UUID] = mapped_column(
-        UUID, primary_key=True, default=uuid4, comment="Unique Identifier for the Product.")
+        UUID,
+        primary_key=True,
+        default=uuid4,
+        comment="Unique Identifier for the Product."
+    )
     name: Mapped[str] = mapped_column(
-        String(50), nullable=False, comment="Name of the Product.")
+        String(50),
+        nullable=False,
+        comment="Name of the Product."
+    )
     description: Mapped[str] = mapped_column(
-        String, nullable=False, comment="Description of the Product")
+        String,
+        nullable=False,
+        comment="Description of the Product."
+    )
     price: Mapped[float] = mapped_column(
-        Float, nullable=False, default=0.0, comment="Product price.")
+        Float,
+        nullable=False,
+        default=0.0,
+        comment="Price of the Product."
+    )
     is_removed: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, comment="Product Removal Indicator.")
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="Product Removal Indicator."
+    )
+
+    ##############
+    # Foreign Key
+    ##############
+
     category_id: Mapped[int] = mapped_column(
-        ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False, comment="(F.K) Category of the Product.")
+        ForeignKey("categories.id", ondelete="RESTRICT"),
+        nullable=False,
+        comment="(F.K) Category of the Product."
+    )
+
+    ################
+    # Relationships
+    ################
+
     category: Mapped["Category"] = relationship(
-        uselist=False, back_populates="products")
+        uselist=False,
+        back_populates="products"
+    )
 
 
 # Relationship: 1-to-Many

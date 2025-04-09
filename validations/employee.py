@@ -28,6 +28,11 @@ class EmployeeBase(BaseModel):
         max_length=200,
         description="Address of the Employee"
     )
+    position: str = Field(
+        ...,
+        max_length=30,
+        description="Position of the Employee"
+    )
     hire_date: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="Hire Date of the Employee"
@@ -110,6 +115,11 @@ class EmployeeUpdateRequest(BaseModel):
     store_id: Optional[UUID4] = Field(
         None,
         description="Store Identifier where the Employee Works"
+    )
+    position: Optional[str] = Field(
+        None,
+        max_length=30,
+        description="Position of the Employee"
     )
 
     model_config = ConfigDict(from_attributes=True)

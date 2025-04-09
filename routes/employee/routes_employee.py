@@ -60,10 +60,25 @@ async def get_employee_by_id(employee_id: UUID, db: db_dependency):
 @router.get("/employee/all",
             response_model=List[EmployeeResponse],
             status_code=status.HTTP_200_OK)
-async def get_all_employees(db: db_dependency, limit: int = 10, offset: int = 0):
+async def get_all_employees(db: db_dependency, limit: int = 10,
+                            offset: int = 0, by_position: str | None = None):
     """Get all Employee details."""
     try:
-        employees = db.query(Employee).offset(offset).limit(limit).all()
+        if by_position:
+            employees = (
+                db.query(Employee)
+                .filter(Employee.position == by_position)
+                .offset(offset)
+                .limit(limit)
+                .all()
+            )
+        else:
+            employees = (
+                db.query(Employee)
+                .offset(offset)
+                .limit(limit)
+                .all()
+            )
         return [EmployeeResponse.model_validate(emp) for emp in employees]
 
     except Exception as e:
@@ -77,36 +92,21 @@ async def get_all_employees(db: db_dependency, limit: int = 10, offset: int = 0)
 async def update_employee(employees_data: List[EmployeeUpdateRequest], db: db_dependency):
     """Update Existing Employees."""
     try:
-        update_map = {emp.id: emp for emp in employees_data}
+        employees_to_update = {emp.id: emp for emp in employees_data}
         employees = db.query(Employee).filter(
-            Employee.id.in_(update_map)).all()
+            Employee.id.in_(employees_to_update)).all()
 
         if not employees:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Employees Not Found")
 
-        for emp in employees:
-            update = update_map.get(emp.id)
-            if update.first_name:
-                emp.first_name = update.first_name
-            if update.last_name:
-                emp.last_name = update.last_name
-            if update.phone_number:
-                emp.phone_number = update.phone_number
-            if update.email:
-                emp.email = update.email
-            if update.address:
-                emp.address = update.address
-            if update.store_id:
-                emp.store_id = update.store_id
-            if update.hire_date:
-                emp.hire_date = update.hire_date
-            if update.leave_date:
-                emp.leave_date = update.leave_date
+        for employee in employees:
+            updated_employee: EmployeeUpdateRequest = employees_to_update[employee.id]
+            for field, value in updated_employee.model_dump(exclude_unset=True).items():
+                setattr(employee, field, value)
 
         db.commit()
         db.refresh(employees)
-
         return [EmployeeResponse.model_validate(emp) for emp in employees]
 
     except Exception as e:
