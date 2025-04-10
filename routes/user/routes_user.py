@@ -1,27 +1,22 @@
 from fastapi import APIRouter, status, HTTPException, Depends
 from utils.db import db_dependency
 from validations.user import (
-    Token,
     UserRequest,
     UserRead,
     UserPublicUpdateRequest,
-    UserPublicResponse,
     UserManagementUpdateRequest
 )
 from schemas.user import User
 from utils.auth import (
     bcrypt_context,
-    auth_form,
-    authenticate_user,
-    create_access_token,
     user_dependency,
     require_access_level
 )
-from datetime import timedelta
 from typing import Annotated, List
+from uuid import UUID
 
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/users")
 
 
 @router.post("/public/add",
@@ -86,53 +81,33 @@ async def create_internal_user(user_data: UserRequest,
         )
 
 
-@router.post("/login",
-             response_model=Token,
-             status_code=status.HTTP_202_ACCEPTED)
-async def user_login(form_data: auth_form, db: db_dependency):
+@router.get("/get/{identifier}",
+            response_model=UserRead,
+            status_code=status.HTTP_200_OK)
+async def get_user_from_identifier(identifier: str | UUID,
+                                   db: db_dependency,
+                                   current_user: Annotated[dict, Depends(require_access_level(3))],
+                                   from_username: bool = False):
     try:
-        user = authenticate_user(form_data.username, form_data.password, db)
-        if not user:
+        if current_user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could Not Validate User"
             )
+        if from_username:
+            user = db.query(User).filter(User.username == identifier).first()
+        else:
+            user = db.query(User).filter(User.id == identifier).first()
 
-        token = create_access_token(
-            user.username,
-            user.id,
-            expires_in=timedelta(minutes=30)
-        )
-
-        return Token(access_token=token, token_type="bearer")
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User Not Found"
+            )
+        return UserRead.model_validate(user)
 
     except HTTPException as e:
         raise e
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Login Failed: {str(e)}"
-        )
-
-
-@router.get("/get/user",
-            response_model=UserRead,
-            status_code=status.HTTP_200_OK)
-async def get_user(db: db_dependency, user: user_dependency):
-    try:
-        if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could Not Validate User"
-            )
-
-        return UserPublicResponse(
-            id=user["id"],
-            username=user["username"],
-            level=user["level"],
-            is_internal_user=user["is_internal_user"]
-        )
 
     except Exception as e:
         raise HTTPException(
