@@ -53,11 +53,40 @@ class UserLoginRequest(BaseModel):
     )
 
 
-class UserPasswordUpdateRequest(UserLoginRequest):
-    new_password: str = Field(
+class UserPublicUpdateRequest(BaseModel):
+    new_username: Optional[str] = Field(
+        min_length=7,
+        max_length=20,
+        example="New Username to be used in the Account"
+    )
+    new_password: Optional[str] = Field(
         min_length=9,
         max_length=100,
         description="New Password for the User Account"
+    )
+
+
+class UserManagementUpdateRequest(BaseModel):
+    username: str = Field(
+        min_length=7,
+        max_length=20,
+        example="Username currently being used in the Account"
+    )
+    new_username: Optional[str] = Field(
+        default=None,
+        min_length=7,
+        max_length=20,
+        example="New Username to be used in the Account"
+    )
+    new_password: Optional[str] = Field(
+        default=None,
+        min_length=9,
+        max_length=100,
+        description="New Password for the User Account"
+    )
+    new_level: Optional[int] = Field(
+        default=None,
+        description="New Role Level of the User (Requires Special Priveledges to Use a High Level)"
     )
 
 

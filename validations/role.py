@@ -45,3 +45,12 @@ class RoleResponseWithUsers(RoleBase):
     @property
     def user_count(self) -> int:
         return len(self.users)
+
+
+# Roles:
+# 1 - User
+# 2 - Employees Like Cashier, Store Workers, etc
+# 3 - Managers or HR Employees
+# 4 - Management Heads
+# 5 - IT Admins
+# 6 - Super Admin

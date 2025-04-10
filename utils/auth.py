@@ -8,6 +8,7 @@ import os
 from schemas.user import User
 from uuid import UUID
 from datetime import timedelta, datetime, timezone
+from sqlalchemy.orm import Session
 
 
 load_dotenv()
@@ -23,8 +24,12 @@ oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/login")
 auth_form = Annotated[OAuth2PasswordRequestForm, Depends()]
 
 
-def authenticate_user(username: str, password: str, db) -> User | None:
-    user = db.query(User).filter(User.username == username).first()
+def authenticate_user(username: str, password: str, db: Session) -> User | None:
+    user = (
+        db.query(User)
+        .filter(User.username == username)
+        .first()
+    )
     if not user:
         return
 
@@ -75,8 +80,15 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]) -> dic
         )
 
 
-user_dependency = Annotated[dict, Depends(get_current_user)]
+def require_access_level(min_level: int):
+    def checker(user: user_dependency):
+        if user["level"] < min_level:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient Privileges. Required level: {min_level}"
+            )
+        return user
+    return checker
 
-# Add User Level Details in the Token (done)
-# Create Function to Decode the Token and Get Current User Details (done)
-# Add Level Based Access Points
+
+user_dependency = Annotated[dict, Depends(get_current_user)]
