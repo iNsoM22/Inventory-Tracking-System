@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, status
-from typing import List
+from fastapi import APIRouter, HTTPException, status, Depends
+from typing import List, Annotated
 from uuid import UUID
 from validations.employee import (
     EmployeeRequest,
@@ -10,38 +10,51 @@ from validations.employee import (
 )
 from utils.db import db_dependency
 from schemas.employee import Employee
+from utils.auth import require_access_level
+from schemas.user import User
 
 
-router = APIRouter(prefix="/management")
+router = APIRouter(prefix="/employees", tags=["Employee Management"])
 
 
-@router.post("/employee/add",
+@router.post("/add",
              response_model=List[EmployeeResponse],
              status_code=status.HTTP_201_CREATED)
-async def add_employees(employees: List[EmployeeRequest], db: db_dependency):
+async def add_employees(employees: List[EmployeeRequest], db: db_dependency,
+                        current_user: Annotated[dict, Depends(require_access_level(3))]):
     """Create a new Employee."""
     try:
         new_employees = [Employee(**employee.model_dump())
                          for employee in employees]
         db.add_all(new_employees)
         db.commit()
-        db.refresh(new_employees)
+        response = []
+        for emp in new_employees:
+            db.refresh(emp)
+            response.append(EmployeeResponse.model_validate(emp))
 
-        return [EmployeeResponse.model_validate(emp) for emp in new_employees]
+        return response
+
+    except HTTPException as e:
+        raise e
 
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=f"Error Creating Employees: {str(e)}")
 
 
-@router.get("/employee/get/{employee_id}",
+@router.get("/get/{employee_id}",
             response_model=EmployeeResponse,
             status_code=status.HTTP_200_OK)
-async def get_employee_by_id(employee_id: UUID, db: db_dependency):
+async def get_employee_by_id(employee_id: UUID, db: db_dependency,
+                             current_user: Annotated[dict, Depends(require_access_level(3))]):
     """Get Employee details."""
     try:
-        employee = db.query(Employee).filter(
-            Employee.id == employee_id).first()
+        employee = (
+            db.query(Employee)
+            .filter(Employee.id == employee_id)
+            .first()
+        )
 
         if not employee:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -57,10 +70,12 @@ async def get_employee_by_id(employee_id: UUID, db: db_dependency):
                             detail=f"Error Fetching Employee: {str(e)}")
 
 
-@router.get("/employee/all",
+@router.get("/all",
             response_model=List[EmployeeResponse],
             status_code=status.HTTP_200_OK)
-async def get_all_employees(db: db_dependency, limit: int = 10,
+async def get_all_employees(db: db_dependency,
+                            current_user: Annotated[dict, Depends(require_access_level(3))],
+                            limit: int = 10,
                             offset: int = 0, by_position: str | None = None):
     """Get all Employee details."""
     try:
@@ -81,20 +96,27 @@ async def get_all_employees(db: db_dependency, limit: int = 10,
             )
         return [EmployeeResponse.model_validate(emp) for emp in employees]
 
+    except HTTPException as e:
+        raise e
+
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=f"Error Fetching Employees: {str(e)}")
 
 
-@router.put("/employee/mod",
+@router.put("/mod",
             response_model=List[EmployeeResponse],
             status_code=status.HTTP_202_ACCEPTED)
-async def update_employee(employees_data: List[EmployeeUpdateRequest], db: db_dependency):
+async def update_employee(employees_data: List[EmployeeUpdateRequest], db: db_dependency,
+                          current_user: Annotated[dict, Depends(require_access_level(4))]):
     """Update Existing Employees."""
     try:
         employees_to_update = {emp.id: emp for emp in employees_data}
-        employees = db.query(Employee).filter(
-            Employee.id.in_(employees_to_update)).all()
+        employees = (
+            db.query(Employee)
+            .filter(Employee.id.in_(employees_to_update))
+            .all()
+        )
 
         if not employees:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -106,31 +128,58 @@ async def update_employee(employees_data: List[EmployeeUpdateRequest], db: db_de
                 setattr(employee, field, value)
 
         db.commit()
-        db.refresh(employees)
-        return [EmployeeResponse.model_validate(emp) for emp in employees]
+        response = []
+        for emp in employees:
+            db.refresh(emp)
+            response.append(EmployeeResponse.model_validate(emp))
+
+        return response
+
+    except HTTPException as e:
+        raise e
 
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=f"Error Updating Employee: {str(e)}")
 
 
-@router.put("/employee/mod/{employee_id}",
+@router.put("/mod/user-id/{employee_id}",
             response_model=EmployeeResponse,
             status_code=status.HTTP_202_ACCEPTED)
-async def update_employee_user_id(employee_id: UUID, new_data: EmployeeUserIDUpdateRequest, db: db_dependency):
+async def update_employee_user_id(employee_id: UUID,
+                                  new_data: EmployeeUserIDUpdateRequest,
+                                  db: db_dependency,
+                                  current_user: Annotated[dict, Depends(require_access_level(4))]):
     """Update User ID for a Specific Employee."""
     try:
-        employee = db.query(Employee).filter(
-            Employee.id == employee_id).first()
+        employee = (
+            db.query(Employee).
+            filter(Employee.id == employee_id)
+            .first()
+        )
 
         if not employee:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Employee Not Found")
 
+        if current_user["id"] == employee.user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="Cannot Update Your Own User ID")
+        if new_data.new_user_id:
+            user = db.query(User).filter(
+                User.id == new_data.new_user_id).first()
+            if not user:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                    detail="User Not Found, Create a User Account First to Assign the User ID")
+
+            if user.level > current_user["level"]:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                    detail="Cannot Assign User ID to a User with a Higher Access Level")
+
         employee.user_id = new_data.user_id
         db.commit()
         db.refresh(employee)
-
+        # P.S: Logout User after Changing its Credentials
         return EmployeeResponse.model_validate(employee)
 
     except HTTPException as e:
@@ -141,9 +190,10 @@ async def update_employee_user_id(employee_id: UUID, new_data: EmployeeUserIDUpd
                             detail=f"Error Updating Employee User ID: {str(e)}")
 
 
-@router.delete("/employee/del",
-               status_code=status.HTTP_202_ACCEPTED)
-async def delete_employee(employees_for_deletion: List[EmployeeDeleteRequest], db: db_dependency):
+@router.delete("/del",
+               status_code=status.HTTP_204_NO_CONTENT)
+async def delete_employee(employees_for_deletion: List[EmployeeDeleteRequest], db: db_dependency,
+                          current_user: Annotated[dict, Depends(require_access_level(4))]):
     """Delete Employees."""
     try:
         delete_ids = [emp.id for emp in employees_for_deletion]
@@ -155,11 +205,14 @@ async def delete_employee(employees_for_deletion: List[EmployeeDeleteRequest], d
                                 detail="Employees Not Found")
 
         for emp in employees:
-            db.delete(emp)
+            if emp.user.level < current_user["level"]:
+                db.delete(emp)
+            else:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                    detail="Cannot Delete Higher Level Employee Accounts")
 
         db.commit()
-
-        return {"detail": "Employees and Related Information have been deleted Successfully."}
+        return
 
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

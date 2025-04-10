@@ -118,10 +118,6 @@ class EmployeeUpdateRequest(BaseModel):
 
 
 class EmployeeUserIDUpdateRequest(BaseModel):
-    user_id: UUID4 = Field(
-        ...,
-        description="User ID for the Employee"
-    )
     new_user_id: UUID4 = Field(
         ...,
         description="New User ID for the Employee"

@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, status
-from typing import List
+from fastapi import APIRouter, HTTPException, status, Depends
+from typing import List, Annotated
 from validations.role import (
     RoleRequest,
     RoleResponse,
@@ -8,6 +8,7 @@ from validations.role import (
     RoleDeleteRequest)
 from utils.db import db_dependency
 from schemas.role import Role
+from utils.auth import user_dependency, require_access_level
 
 
 router = APIRouter(prefix="/management")
@@ -16,14 +17,15 @@ router = APIRouter(prefix="/management")
 @router.post("/role/add",
              response_model=List[RoleResponse],
              status_code=status.HTTP_201_CREATED)
-async def create_role(roles: List[RoleRequest], db: db_dependency):
+async def create_role(roles: List[RoleRequest], db: db_dependency,
+                      current_user: Annotated[dict, Depends(require_access_level(5))]):
     """Create a New Role."""
     try:
         new_roles = [Role(**role.model_dump()) for role in roles]
         db.add_all(new_roles)
         db.commit()
 
-        return RoleResponse.model_validate(new_roles)
+        return [RoleResponse.model_validate(new_role) for new_role in new_roles]
 
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -33,7 +35,9 @@ async def create_role(roles: List[RoleRequest], db: db_dependency):
 @router.get("/role/all",
             response_model=List[RoleResponse | RoleResponseWithUsers],
             status_code=status.HTTP_200_OK)
-async def get_roles(db: db_dependency, include_users: bool = True):
+async def get_roles(db: db_dependency,
+                    current_user: Annotated[dict, Depends(require_access_level(2))],
+                    include_users: bool = True):
     """Get Roles details along with associated Users."""
     try:
         roles = db.query(Role).all()
@@ -50,7 +54,8 @@ async def get_roles(db: db_dependency, include_users: bool = True):
 @router.put("/role/mod/",
             response_model=List[RoleResponse],
             status_code=status.HTTP_202_ACCEPTED)
-async def update_role(updated_data: List[RoleUpdateRequest], db: db_dependency):
+async def update_role(updated_data: List[RoleUpdateRequest], db: db_dependency,
+                      current_user: Annotated[dict, Depends(require_access_level(5))]):
     """Update Existing Roles."""
     try:
         role_levels_to_update = {role.level: role for role in updated_data}
@@ -83,7 +88,8 @@ async def update_role(updated_data: List[RoleUpdateRequest], db: db_dependency):
 
 
 @router.delete("/role/del", status_code=status.HTTP_202_ACCEPTED)
-async def delete_role(roles_for_deletion: List[RoleDeleteRequest], db: db_dependency):
+async def delete_role(roles_for_deletion: List[RoleDeleteRequest], db: db_dependency,
+                      current_user: Annotated[dict, Depends(require_access_level(5))]):
     """Delete Roles."""
     try:
         role_levels_to_delete = [role.level for role in roles_for_deletion]
