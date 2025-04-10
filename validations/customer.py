@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, UUID4, EmailStr
+from pydantic import BaseModel, Field, ConfigDict, UUID4
 from typing import Optional
 
 
@@ -12,10 +12,6 @@ class CustomerBase(BaseModel):
         ...,
         max_length=50,
         description="Last Name of the Customer"
-    )
-    email: Optional[EmailStr] = Field(
-        None,
-        description="Email of the Customer"
     )
     phone_number: str = Field(
         ...,
@@ -44,7 +40,7 @@ class CustomerResponse(CustomerBase):
     )
 
 
-class CustomerUpdateRequest(CustomerBase):
+class CustomerUpdateRequest(BaseModel):
     first_name: Optional[str] = Field(
         None,
         max_length=50,
@@ -59,6 +55,12 @@ class CustomerUpdateRequest(CustomerBase):
         None,
         description="Phone of the Customer"
     )
+    address: Optional[str] = Field(
+        None,
+        description="Address of the Customer"
+    )
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CustomerUserIDUpdateRequest(BaseModel):

@@ -31,13 +31,6 @@ class Customer(Base):
         index=True,
         comment="Phone number of the Customer."
     )
-    email: Mapped[str] = mapped_column(
-        String,
-        unique=True,
-        index=True,
-        nullable=True,
-        comment="Email of the Customer."
-    )
     address: Mapped[str] = mapped_column(
         String(200),
         nullable=True,
