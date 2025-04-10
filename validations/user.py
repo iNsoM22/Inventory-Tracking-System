@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
@@ -33,6 +33,10 @@ class UserBase(BaseModel):
 
 
 class UserRequest(UserBase):
+    email: EmailStr = Field(
+        max_length=40,
+        description="Email of the User"
+    )
     password: str = Field(
         min_length=9,
         max_length=100,
@@ -41,15 +45,19 @@ class UserRequest(UserBase):
 
 
 class UserLoginRequest(BaseModel):
-    username: str = Field(
+    username: Optional[str] = Field(
         min_length=7,
         max_length=20,
-        example="Username to be used in the Account"
+        example="Username used in the Account"
+    )
+    email: Optional[EmailStr] = Field(
+        max_length=40,
+        description="Email of the User"
     )
     password: str = Field(
         min_length=9,
         max_length=100,
-        description="Password for the User Account"
+        description="Password used in the Account"
     )
 
 
@@ -59,6 +67,10 @@ class UserPublicUpdateRequest(BaseModel):
         max_length=20,
         example="New Username to be used in the Account"
     )
+    new_email: Optional[EmailStr] = Field(
+        max_length=40,
+        example="New Email to be used in the Account"
+    )
     new_password: Optional[str] = Field(
         min_length=9,
         max_length=100,
@@ -67,16 +79,26 @@ class UserPublicUpdateRequest(BaseModel):
 
 
 class UserManagementUpdateRequest(BaseModel):
-    username: str = Field(
+    username: Optional[str] = Field(
+        default=None,
         min_length=7,
         max_length=20,
         example="Username currently being used in the Account"
+    )
+    email: Optional[EmailStr] = Field(
+        default=None,
+        max_length=40,
+        description="Email of the User"
     )
     new_username: Optional[str] = Field(
         default=None,
         min_length=7,
         max_length=20,
         example="New Username to be used in the Account"
+    )
+    new_email: Optional[EmailStr] = Field(
+        default=None,
+        description="New Email of the User"
     )
     new_password: Optional[str] = Field(
         default=None,
@@ -94,6 +116,10 @@ class UserRead(UserBase):
     id: UUID = Field(
         ...,
         description="Unique Identifier for the User"
+    )
+    email: EmailStr = Field(
+        max_length=40,
+        description="Email of the User"
     )
     created_at: datetime = Field(
         ...,

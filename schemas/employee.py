@@ -43,13 +43,6 @@ class Employee(Base):
         nullable=False,
         comment="Phone number of the Employee."
     )
-    email: Mapped[str] = mapped_column(
-        String,
-        unique=True,
-        nullable=False,
-        index=True,
-        comment="Email of the Employee."
-    )
     address: Mapped[str] = mapped_column(
         String(200),
         nullable=False,

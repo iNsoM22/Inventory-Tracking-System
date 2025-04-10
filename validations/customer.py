@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, UUID4
+from pydantic import BaseModel, Field, ConfigDict, UUID4, EmailStr
 from typing import Optional
 
 
@@ -13,7 +13,7 @@ class CustomerBase(BaseModel):
         max_length=50,
         description="Last Name of the Customer"
     )
-    email: Optional[str] = Field(
+    email: Optional[EmailStr] = Field(
         None,
         description="Email of the Customer"
     )

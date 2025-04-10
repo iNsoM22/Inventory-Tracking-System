@@ -19,10 +19,6 @@ class EmployeeBase(BaseModel):
         max_length=16,
         description="Phone number of the Employee"
     )
-    email: EmailStr = Field(
-        ...,
-        description="Email of the Employee"
-    )
     address: str = Field(
         ...,
         max_length=200,
@@ -102,10 +98,6 @@ class EmployeeUpdateRequest(BaseModel):
         None,
         max_length=16,
         description="Phone number of the Employee"
-    )
-    email: Optional[EmailStr] = Field(
-        None,
-        description="Email of the Employee"
     )
     address: Optional[str] = Field(
         None,

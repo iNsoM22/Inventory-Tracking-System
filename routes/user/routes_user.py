@@ -27,6 +27,7 @@ async def create_public_user(user_data: UserRequest, db: db_dependency):
     try:
         new_user = User(
             username=user_data.username,
+            email=user_data.email,
             password=bcrypt_context.hash(user_data.password),
             is_internal_user=user_data.is_internal_user
         )
@@ -55,6 +56,7 @@ async def create_internal_user(user_data: UserRequest,
         new_user = User(
             username=user_data.username,
             password=bcrypt_context.hash(user_data.password),
+            email=user_data.email,
             is_internal_user=user_data.is_internal_user,
             level=user_data.level
         )
@@ -87,7 +89,8 @@ async def create_internal_user(user_data: UserRequest,
 async def get_user_from_identifier(identifier: str | UUID,
                                    db: db_dependency,
                                    current_user: Annotated[dict, Depends(require_access_level(3))],
-                                   from_username: bool = False):
+                                   from_username: bool = False,
+                                   from_email: bool = False):
     try:
         if current_user is None:
             raise HTTPException(
@@ -96,6 +99,8 @@ async def get_user_from_identifier(identifier: str | UUID,
             )
         if from_username:
             user = db.query(User).filter(User.username == identifier).first()
+        elif from_email:
+            user = db.query(User).filter(User.email == identifier).first()
         else:
             user = db.query(User).filter(User.id == identifier).first()
 
@@ -151,8 +156,8 @@ async def modify_user(updated_user: UserPublicUpdateRequest,
                 detail="Could Not Validate User"
             )
 
-        user = db.query(User).filter(User.username ==
-                                     current_user["username"]).first()
+        user = db.query(User).filter(User.id ==
+                                     current_user["id"]).first()
 
         if not user:
             raise HTTPException(
@@ -164,6 +169,8 @@ async def modify_user(updated_user: UserPublicUpdateRequest,
             user.username = updated_user.new_username
         if updated_user.new_password:
             user.password = bcrypt_context.hash(updated_user.new_password)
+        if updated_user.new_email:
+            user.email = updated_user.new_email
 
         db.commit()
         db.refresh(user)
@@ -194,8 +201,17 @@ async def modify_any_user(updated_user: UserManagementUpdateRequest,
                 detail="Could Not Validate User"
             )
 
-        user = db.query(User).filter(User.username ==
-                                     updated_user.username).first()
+        if updated_user.username:
+            user = db.query(User).filter(User.username ==
+                                         updated_user.username).first()
+        elif updated_user.email:
+            user = db.query(User).filter(User.email ==
+                                         updated_user.email).first()
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username or Email Required"
+            )
 
         if not user:
             raise HTTPException(
@@ -213,6 +229,8 @@ async def modify_any_user(updated_user: UserManagementUpdateRequest,
             user.username = updated_user.new_username
         if updated_user.new_password:
             user.password = bcrypt_context.hash(updated_user.new_password)
+        if updated_user.new_email:
+            user.email = updated_user.new_email
         if updated_user.new_level:
             user.level = updated_user.new_level
 

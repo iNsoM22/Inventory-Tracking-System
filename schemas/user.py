@@ -21,6 +21,13 @@ class User(Base):
         nullable=False,
         comment="Username that will be used for Authentication."
     )
+    email: Mapped[str] = mapped_column(
+        String,
+        unique=True,
+        index=True,
+        nullable=True,
+        comment="Email of the User."
+    )
     password: Mapped[str] = mapped_column(
         String(256),
         nullable=False,

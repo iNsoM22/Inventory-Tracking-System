@@ -5,6 +5,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from dotenv import load_dotenv
 import os
+import re
 from schemas.user import User
 from uuid import UUID
 from datetime import timedelta, datetime, timezone
@@ -24,19 +25,28 @@ oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/login")
 auth_form = Annotated[OAuth2PasswordRequestForm, Depends()]
 
 
+def is_email(value: str) -> bool:
+    email_pattern = r"[^@]+@[^@]+\.[^@]+"
+    return re.fullmatch(email_pattern, value) is not None
+
+
 def authenticate_user(username: str, password: str, db: Session) -> User | None:
-    user = (
-        db.query(User)
-        .filter(User.username == username)
-        .first()
-    )
-    if not user:
-        return
+    try:
+        if is_email(username):
+            user = db.query(User).filter(User.email == username).first()
+        else:
+            user = db.query(User).filter(User.username == username).first()
 
-    if not bcrypt_context.verify(password, user.password):
-        return
+        if not user:
+            return None
 
-    return user
+        if not bcrypt_context.verify(password, user.password):
+            return None
+
+        return user
+
+    except Exception as e:
+        return None
 
 
 def create_access_token(username: str, user_id: UUID, is_internal_user: bool,
