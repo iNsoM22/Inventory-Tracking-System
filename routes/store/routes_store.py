@@ -1,14 +1,17 @@
-from fastapi import APIRouter, HTTPException, status
-from typing import List
+from fastapi import APIRouter, HTTPException, status, Depends
+from typing import List, Annotated
 from uuid import UUID
 from schemas.store import Store
 from validations.store import (
     StoreRequest,
     StoreResponse,
     StoreResponseWithRelations,
-    StoreUpdateRequest
+    StoreUpdateRequest,
+    StoreWithIncludeRelationsRequest
 )
 from utils.db import db_dependency
+from utils.auth import require_access_level
+from utils.information_loader import load_store_related_data
 
 
 router = APIRouter(prefix="/stores")
@@ -17,7 +20,9 @@ router = APIRouter(prefix="/stores")
 @router.post("/add",
              response_model=List[StoreResponse],
              status_code=status.HTTP_201_CREATED)
-async def create_stores(stores: List[StoreRequest], db: db_dependency):
+async def create_stores(stores: List[StoreRequest],
+                        db: db_dependency,
+                        current_user: Annotated[dict, Depends(require_access_level(4))]):
     """Create New Stores."""
     try:
         new_stores = [Store(**store.model_dump()) for store in stores]
@@ -25,8 +30,11 @@ async def create_stores(stores: List[StoreRequest], db: db_dependency):
         db.commit()
         return [StoreResponse.model_validate(store) for store in new_stores]
 
+    except HTTPException as e:
+        raise e
+
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail=f"Error Creating Stores: {str(e)}")
 
 
@@ -39,41 +47,37 @@ async def get_all_stores(db: db_dependency):
         stores = db.query(Store).all()
         return [StoreResponse.model_validate(store) for store in stores]
 
+    except HTTPException as e:
+        raise e
+
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail=f"Error Fetching Stores: {str(e)}")
 
 
-@router.get("/get/{store_id}",
-            response_model=StoreResponseWithRelations,
-            status_code=status.HTTP_200_OK)
-async def get_store_by_id(store_id: UUID,
+@router.post("/get/{store_id}",
+             response_model=StoreResponseWithRelations,
+             status_code=status.HTTP_200_OK)
+async def get_store_by_id(store_response_config: StoreWithIncludeRelationsRequest,
                           db: db_dependency,
-                          include_employees: bool = False,
-                          include_inventory: bool = False,
-                          include_transactions: bool = False,
-                          include_restocks: bool = False,
-                          include_removals: bool = False,
-                          include_orders: bool = False,
-                          include_refunds: bool = False):
+                          current_user: Annotated[dict, Depends(require_access_level(2))],
+                          ):
     """Retrieve a Store and its Related Information by ID."""
     try:
         store = (
             db.query(Store)
-            .filter(Store.id == store_id)
+            .filter(Store.id == store_response_config.id)
             .first()
         )
+        location = store.location
+        store_model = StoreResponseWithRelations(**store.__dict__)
+        store_model.location = location
+        store_model = load_store_related_data(
+            store_model, db, store_response_config)
+        return store_model
 
-        return StoreResponseWithRelations.include_related_information(
-            store,
-            include_employees=include_employees,
-            include_inventories=include_inventory,
-            include_transactions=include_transactions,
-            include_restocks=include_restocks,
-            include_removals=include_removals,
-            include_orders=include_orders,
-            include_refunds=include_refunds
-        )
+    except HTTPException as e:
+        raise e
 
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,

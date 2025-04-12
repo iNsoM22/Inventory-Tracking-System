@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
-from schemas.store import Store
 from .location import LocationBase
 from .employee import EmployeeResponseWithOutStore
 from .inventory import InventoryBase
@@ -28,6 +27,73 @@ class StoreBase(BaseModel):
 
 class StoreRequest(StoreBase):
     pass
+
+
+class StoreWithIncludeRelationsRequest(BaseModel):
+    id: int = Field(
+        ...,
+        description="Unique identifier for the Store"
+    )
+    inlcude_inventory: bool = Field(
+        False,
+        description="Include Inventory in the response"
+    )
+    include_employee: bool = Field(
+        False,
+        description="Include Employee in the response"
+    )
+    include_restock: bool = Field(
+        False,
+        description="Include Restock in the response"
+    )
+    include_removal: bool = Field(
+        False,
+        description="Include Removal in the response"
+    )
+    include_order: bool = Field(
+        False,
+        description="Include Order in the response"
+    )
+    include_refund: bool = Field(
+        False,
+        description="Include Refund in the response"
+    )
+    include_transactions: bool = Field(
+        False,
+        description="Include Transactions in the response"
+    )
+    records_limit: int = Field(
+        100,
+        description="Number of records to return in the response"
+    )
+    inventory_offset: int = Field(
+        0,
+        description="Offset for Inventory in the response"
+    )
+    employee_offset: int = Field(
+        0,
+        description="Offset for Employee in the response"
+    )
+    restock_offset: int = Field(
+        0,
+        description="Offset for Restock in the response"
+    )
+    removal_offset: int = Field(
+        0,
+        description="Offset for Removal in the response"
+    )
+    order_offset: int = Field(
+        0,
+        description="Offset for Order in the response"
+    )
+    refund_offset: int = Field(
+        0,
+        description="Offset for Refund in the response"
+    )
+    transactions_offset: int = Field(
+        0,
+        description="Offset for Transactions in the response"
+    )
 
 
 class StoreUpdateRequest(BaseModel):
@@ -90,58 +156,3 @@ class StoreResponseWithRelations(StoreResponse):
         default_factory=list,
         description="List of Store Refunds"
     )
-
-    @classmethod
-    def include_related_information(
-        cls,
-        store_object: Store,
-        include_inventories: bool = True,
-        include_employees: bool = False,
-        include_transactions: bool = False,
-        include_restocks: bool = False,
-        include_removals: bool = False,
-        include_orders: bool = False,
-        include_refunds: bool = False
-    ):
-
-        return cls(
-            id=store_object.id,
-            name=store_object.name,
-            location_id=store_object.location_id,
-            location=LocationBase(store_object.location),
-
-            inventory=[
-                InventoryBase.model_validate(item)
-                for item in store_object.inventory
-            ] if include_inventories else [],
-
-            employees=[
-                EmployeeResponseWithOutStore.model_validate(emp)
-                for emp in store_object.employees
-            ] if include_employees else [],
-
-            restocks=[
-                RestockResponseWithOutStore.model_validate(r)
-                for r in store_object.restocks
-            ] if include_restocks else [],
-
-            removals=[
-                StockRemovalResponseWithOutStore.model_validate(rm)
-                for rm in store_object.removals
-            ] if include_removals else [],
-
-            transactions=[
-                TransactionResponseWithOutStore.model_validate(tx)
-                for tx in store_object.transactions
-            ] if include_transactions else [],
-
-            orders=[
-                OrderResponseWithOutStore.model_validate(order)
-                for order in store_object.orders
-            ] if include_orders else [],
-
-            refunds=[
-                RefundResponseWithOutStore.model_validate(ref)
-                for ref in store_object.refunds
-            ] if include_refunds else []
-        )
