@@ -3,13 +3,12 @@ from typing import List, Annotated, Optional
 from uuid import UUID
 from datetime import date
 from utils.db import db_dependency
-from validations.inventory import InventoryRequest
 from validations.restock import RestockRequest, RestockResponse, RestockUpdateRequest
-from schemas.product import Product
-from schemas.restock import Restock, RestockItems
-from schemas.inventory import Inventory
+from schemas.restock import Restock
 from utils.stock_restore import restore_inventory
 from utils.auth import require_access_level
+from utils.create_transaction import add_transaction
+from utils.restock_creator import create_restock_items, add_restock_items_to_inventory
 
 
 router = APIRouter(prefix="/restocks", tags=["Restocks"])
@@ -22,43 +21,8 @@ def create_restock(restock_data: RestockRequest,
                    db: db_dependency,
                    current_user: Annotated[dict, Depends(require_access_level(3))]):
     try:
-        product_ids = [item.product_id for item in restock_data.items]
-        products = {p.id: p for p in db.query(Product).filter(
-            Product.id.in_(product_ids)).all()}
 
-        products_in_store_inventory = {p.product_id: p for p in db.query(
-            Inventory).filter(Inventory.store_id == restock_data.store_id).all()}
-
-        if len(products) != len(product_ids):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail="One or More Products Not Found")
-
-        restock_items = []
-        new_inventory_records = []
-        for item in restock_data.items:
-            product_in_store_inventory = products_in_store_inventory.get(
-                item.product_id, None)
-
-            if not product_in_store_inventory:
-                new_inventory = Inventory(
-                    **InventoryRequest(
-                        product_id=item.product_id,
-                        quantity=item.restock_quantity,
-                        store_id=restock_data.store_id,
-                        max_discount_amount=0,
-                    ).model_dump()
-                )
-                new_inventory_records.append(new_inventory)
-
-            restock_item = RestockItems(
-                product_id=item.product_id,
-                previous_quantity=product_in_store_inventory.quantity if product_in_store_inventory else 0,
-                restock_quantity=item.restock_quantity)
-
-            restock_items.append(restock_item)
-            if product_in_store_inventory:
-                product_in_store_inventory.quantity += item.restock_quantity
-
+        restock_items = create_restock_items(restock_data, db)
         new_restock = Restock(
             store_id=restock_data.store_id,
             status=restock_data.status,
@@ -66,9 +30,7 @@ def create_restock(restock_data: RestockRequest,
             date_received=restock_data.date_received,
             items=restock_items)
 
-        if len(new_inventory_records):
-            db.add_all(new_inventory_records)
-
+        add_transaction(new_restock, current_user["id"], db)
         db.add(new_restock)
         db.commit()
         db.refresh(new_restock)
@@ -181,6 +143,9 @@ def update_restock(restock_id: UUID,
         if new_data.status == "Cancelled":
             products = {p.id: p.restock_quantity for p in restock.items}
             restore_inventory(db, products, add_stock=False)
+
+        elif new_data.status == "Completed":
+            add_restock_items_to_inventory(restock, db)
 
         db.commit()
         db.refresh(restock)

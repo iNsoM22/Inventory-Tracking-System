@@ -12,6 +12,7 @@ from validations.refund import (
 )
 from utils.check_inventory import check_and_add_inventory
 from utils.auth import user_dependency, require_access_level
+from utils.create_transaction import add_transaction
 
 
 router = APIRouter(prefix="/refunds", tags=["Refunds"])
@@ -51,6 +52,7 @@ def create_refund(refund_data: RefundRequest,
         if refund_data.status == "Refunded":
             order.status = "Refunded"
             check_and_add_inventory(new_refund, operation_type="Sale", db=db)
+            add_transaction(new_refund, current_user["id"], db)
 
         else:
             order.status = "For Refund"
@@ -153,6 +155,7 @@ def update_refund(refund_id: UUID,
 
         if update_data.status == "Refunded":
             refund.order.status = "Refunded"
+            add_transaction(refund, current_user["id"], db)
             check_and_add_inventory(refund, operation_type="Sale", db=db)
 
         db.commit()

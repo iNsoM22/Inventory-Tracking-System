@@ -10,6 +10,7 @@ from schemas.customer import Customer
 from validations.order import OrderRequest, OrderResponse, OrderUpdateRequest, CartItemUpdateRequest
 from utils.check_inventory import check_and_remove_inventory, check_and_add_inventory
 from utils.auth import require_access_level, user_dependency
+from utils.create_transaction import add_transaction
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -54,6 +55,7 @@ def create_order(order_data: OrderRequest,
             items=cart_items
         )
         check_and_remove_inventory(new_order, order_data.store_id, db)
+        add_transaction(new_order, current_user["id"], db)
         db.add(new_order)
         db.commit()
         db.refresh(new_order)

@@ -8,6 +8,7 @@ from schemas.inventory import Inventory
 from schemas.removal import StockRemoval, RemovalItems
 from utils.stock_restore import restore_inventory
 from utils.auth import require_access_level
+from utils.create_transaction import add_transaction
 
 
 router = APIRouter(prefix="/stock-removals", tags=["Stock Removals"])
@@ -59,6 +60,7 @@ def create_stock_removal(removal_data: StockRemovalRequest,
             is_cancelled=removal_data.is_cancelled,
             items=removal_items)
 
+        add_transaction(stock_removal, current_user["id"], db)
         db.add(stock_removal)
         db.commit()
         db.refresh(stock_removal)
