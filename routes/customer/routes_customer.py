@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Annotated
 from uuid import UUID
+from sqlalchemy.future import select
 from validations.customer import (
     CustomerRequest,
     CustomerResponse,
@@ -35,9 +36,9 @@ async def add_customers(customer: CustomerRequest, db: db_dependency,
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail="Unable to Create Customer with differing User IDs")
 
-        db.add_all(new_customer)
-        db.commit()
-        db.refresh(new_customer)
+        db.add(new_customer)
+        await db.commit()
+        await db.refresh(new_customer)
         return CustomerResponse.model_validate(new_customer)
 
     except Exception as e:
@@ -53,7 +54,9 @@ async def get_customers(db: db_dependency,
                         limit: int = 10, offset: int = 0):
     """Get All Customers."""
     try:
-        customers = db.query(Customer).offset(offset).limit(limit).all()
+        stmt = select(Customer).offset(offset).limit(limit)
+        result = await db.execute(stmt)
+        customers = result.scalars().all()
         return [CustomerResponse.model_validate(customer) for customer in customers]
 
     except Exception as e:
@@ -68,11 +71,10 @@ async def get_customer(customer_id: UUID, db: db_dependency,
                        current_user: user_dependency):
     """Get a Customer by ID."""
     try:
-        customer = (
-            db.query(Customer)
-            .filter(Customer.id == customer_id)
-            .first()
-        )
+        stmt = select(Customer).where(Customer.id == customer_id)
+        result = await db.execute(stmt)
+        customer = result.scalars().first()
+
         if not customer:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Customer Not Found")
@@ -98,11 +100,10 @@ async def update_customer(customer_id: UUID, updated_data: CustomerUpdateRequest
                           db: db_dependency, current_user: user_dependency):
     """Update a Customer by ID."""
     try:
-        customer = (
-            db.query(Customer)
-            .filter(Customer.id == customer_id)
-            .first()
-        )
+        stmt = select(Customer).where(Customer.id == customer_id)
+        result = await db.execute(stmt)
+        customer = result.scalars().first()
+
         if not customer:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Customer Not Found")
@@ -114,8 +115,8 @@ async def update_customer(customer_id: UUID, updated_data: CustomerUpdateRequest
         for field, value in updated_data.model_dump(exclude_unset=True).items():
             setattr(customer, field, value)
 
-        db.commit()
-        db.refresh(customer)
+        await db.commit()
+        await db.refresh(customer)
         return CustomerResponse.model_validate(customer)
 
     except HTTPException as e:
@@ -135,11 +136,10 @@ async def update_customer_user_id(customer_id: UUID,
                                   current_user: Annotated[dict, Depends(require_access_level(2))]):
     """Update Customer's User ID."""
     try:
-        customer = (
-            db.query(Customer)
-            .filter(Customer.id == customer_id)
-            .first()
-        )
+        stmt = select(Customer).where(Customer.id == customer_id)
+        result = await db.execute(stmt)
+        customer = result.scalars().first()
+
         if not customer:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Customer Not Found")
@@ -147,14 +147,17 @@ async def update_customer_user_id(customer_id: UUID,
         if new_data.user_id == current_user["id"]:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail="Cannot Update Customer's User ID to Current User's ID")
-        user = db.query(User).filter(User.id == new_data.user_id).first()
+        
+        stmt = select(User).where(User.id == new_data.user_id)
+        user_result = await db.execute(stmt)
+        user = user_result.scalars().first()
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="User Account Not Found")
 
         customer.user_id = new_data.user_id
-        db.commit()
-        db.refresh(customer)
+        await db.commit()
+        await db.refresh(customer)
         return CustomerResponse.model_validate(customer)
 
     except HTTPException as e:
@@ -171,8 +174,9 @@ async def delete_customer(customer_id: UUID, db: db_dependency,
                           current_user: user_dependency):
     """Delete a Customer by ID."""
     try:
-        customer = db.query(Customer).filter(
-            Customer.id == customer_id).first()
+        stmt = select(Customer).where(Customer.id == customer_id)
+        result = await db.execute(stmt)
+        customer = result.scalars().first()
         if not customer:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Customer Not Found")
@@ -191,8 +195,8 @@ async def delete_customer(customer_id: UUID, db: db_dependency,
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                     detail="Cannot Delete Customer Account, Minimum Access Level should be 3")
 
-        db.delete(customer)
-        db.commit()
+        await db.delete(customer)
+        await db.commit()
 
     except HTTPException as e:
         raise e
@@ -208,8 +212,10 @@ async def get_customer_orders(customer_id: UUID, db: db_dependency,
                               current_user: user_dependency):
     """Get a Customer's Orders."""
     try:
-        customer = db.query(Customer).filter(
-            Customer.id == customer_id).first()
+        stmt = select(Customer).where(Customer.id == customer_id)
+        result = await db.execute(stmt)
+        customer = result.scalars().first()
+        
         if not customer:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Customer Not Found")
@@ -219,15 +225,11 @@ async def get_customer_orders(customer_id: UUID, db: db_dependency,
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail="Unable to Retrieve Customer, IDs are not matched.")
 
-        orders = (
-            db.query(Order)
-            .filter(Order.customer_id == customer_id)
-            .order_by(Order.date_placed.desc())
-            .all()
-        )
+        stmt = select(Order).where(Order.customer_id == customer_id).order_by(Order.date_placed.desc())
+        order_result = await db.execute(stmt)
+        orders = order_result.scalars().all()
 
-        customer_response.orders = [
-            OrderResponse.model_validate(order) for order in orders]
+        customer_response.orders = [OrderResponse.model_validate(order) for order in orders]
         return customer_response
 
     except HTTPException as e:
@@ -244,8 +246,9 @@ async def get_customer_refunds(customer_id: UUID, db: db_dependency,
                                current_user: user_dependency):
     """Get a Customer's Refunds."""
     try:
-        customer = db.query(Customer).filter(
-            Customer.id == customer_id).first()
+        stmt = select(Customer).where(Customer.id == customer_id)
+        result = await db.execute(stmt)
+        customer = result.scalars().first()
         if not customer:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Customer Not Found")
@@ -255,16 +258,15 @@ async def get_customer_refunds(customer_id: UUID, db: db_dependency,
                                 detail="Unable to Retrieve Customer, IDs are not matched.")
 
         customer_response = CustomerResponse.model_validate(customer)
-        refunds = (
-            db.query(Refund)
-            .join(Order, Order.id == Refund.order_id)
-            .filter(Order.customer_id == customer_id)
+        stmt = (
+            select(Refund)
+            .join(Order, Refund.order_id == Order.id)
+            .where(Order.customer_id == customer_id)
             .order_by(Refund.date_placed.desc())
-            .all()
-        )
-        customer_response.refunds = [
-            RefundResponse.model_validate(refund) for refund in refunds
-        ]
+            )
+        refund_result = await db.execute(stmt)
+        refunds = refund_result.scalars().all()
+        customer_response.refunds = [RefundResponse.model_validate(refund) for refund in refunds]
         return customer_response
 
     except HTTPException as e:
