@@ -8,7 +8,7 @@ from schemas.removal import StockRemoval
 from sqlalchemy.orm import Session
 
 
-def add_transaction(record, request_made_by: UUID, db: Session):
+async def add_transaction(record, request_made_by: UUID, db: Session):
     if isinstance(record, Order):
         op_type = "Sale"
 
@@ -30,4 +30,4 @@ def add_transaction(record, request_made_by: UUID, db: Session):
                                        request_made_by=request_made_by)
 
     transaction = Transaction(**validation_model.model_dump())
-    db.add(transaction)
+    await db.add(transaction)

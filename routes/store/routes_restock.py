@@ -9,7 +9,7 @@ from utils.stock_restore import restore_inventory
 from utils.auth import require_access_level
 from utils.create_transaction import add_transaction
 from utils.restock_creator import create_restock_items, add_restock_items_to_inventory
-
+from sqlalchemy.future import select
 
 router = APIRouter(prefix="/restocks")
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/restocks")
 @router.post("/add",
              response_model=RestockResponse,
              status_code=status.HTTP_201_CREATED)
-def create_restock(restock_data: RestockRequest,
+async def create_restock(restock_data: RestockRequest,
                    db: db_dependency,
                    current_user: Annotated[dict, Depends(require_access_level(3))]):
     try:
@@ -30,12 +30,12 @@ def create_restock(restock_data: RestockRequest,
             date_received=restock_data.date_received,
             items=restock_items)
 
-        add_transaction(new_restock, current_user["id"], db)
-        db.add(new_restock)
-        db.commit()
-        db.refresh(new_restock)
-
+        await add_transaction(new_restock, current_user["id"], db)
+        await db.add(new_restock)
+        await db.commit()
+        await db.refresh(new_restock)
         return RestockResponse.model_validate(new_restock)
+
 
     except HTTPException as e:
         raise e
@@ -48,11 +48,13 @@ def create_restock(restock_data: RestockRequest,
 @router.get("/get/{restock_id}",
             response_model=RestockResponse,
             status_code=status.HTTP_200_OK)
-def get_restock(restock_id: UUID,
+async def get_restock(restock_id: UUID,
                 db: db_dependency,
                 current_user: Annotated[dict, Depends(require_access_level(2))]):
     try:
-        restock = db.query(Restock).filter(Restock.id == restock_id).first()
+        stmt = select(Restock).where(Restock.id == restock_id)
+        result = await db.execute(stmt)
+        restock = result.scalar_one_or_none()
         if not restock:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Restock Order Not Found")
@@ -69,7 +71,7 @@ def get_restock(restock_id: UUID,
 @router.get("/filter",
             response_model=List[RestockResponse],
             status_code=status.HTTP_200_OK)
-def get_filtered_restocks(db: db_dependency,
+async def get_filtered_restocks(db: db_dependency,
                           current_user: Annotated[dict, Depends(require_access_level(2))],
                           store_id: Optional[UUID] = None,
                           status: Optional[str] = None,
@@ -78,21 +80,22 @@ def get_filtered_restocks(db: db_dependency,
                           limit: int = 50,
                           offset: int = 0):
     try:
-        query = db.query(Restock)
+        stmt = select(Restock)
 
         if store_id:
-            query = query.filter(Restock.store_id == store_id)
-
+            stmt = stmt.where(Restock.store_id == store_id)
+            
         if status:
-            query = query.filter(Restock.status.ilike(status))
-
+            stmt = stmt.where(Restock.status.ilike(status))
+            
         if date_placed:
-            query = query.filter(Restock.date_placed == date_placed)
-
+            stmt = stmt.where(Restock.date_placed == date_placed)
+            
         if date_received:
-            query = query.filter(Restock.date_received == date_received)
-
-        restocks = query.offset(offset).limit(limit).all()
+            stmt = stmt.where(Restock.date_received == date_received)
+        
+        result = await db.execute(stmt)
+        restocks = result.scalars().all()
         return [RestockResponse.model_validate(r) for r in restocks]
 
     except HTTPException as e:
@@ -106,12 +109,14 @@ def get_filtered_restocks(db: db_dependency,
 @router.get("/all",
             response_model=List[RestockResponse],
             status_code=status.HTTP_200_OK)
-def get_restocks(db: db_dependency,
+async def get_restocks(db: db_dependency,
                  current_user: Annotated[dict, Depends(require_access_level(2))],
                  limit: int = 10,
                  offset: int = 0):
     try:
-        restocks = db.query(Restock).offset(offset).limit(limit).all()
+        stmt = select(Restock).offset(offset).limit(limit)
+        result = await db.execute(stmt)
+        restocks = result.scalars().all()
         return [RestockResponse.model_validate(r) for r in restocks]
 
     except HTTPException as e:
@@ -125,12 +130,15 @@ def get_restocks(db: db_dependency,
 @router.put("/mod/{restock_id}",
             response_model=RestockResponse,
             status_code=status.HTTP_202_ACCEPTED)
-def update_restock(restock_id: UUID,
+async def update_restock(restock_id: UUID,
                    new_data: RestockUpdateRequest,
                    db: db_dependency,
                    current_user: Annotated[dict, Depends(require_access_level(2))]):
     try:
-        restock = db.query(Restock).filter(Restock.id == restock_id).first()
+        stmt = select(Restock).where(Restock.id == restock_id)
+        result = await db.execute(stmt)
+        restock = result.scalar_one_or_none()
+
         if not restock:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Restock Order Not Found")
@@ -142,13 +150,13 @@ def update_restock(restock_id: UUID,
 
         if new_data.status == "Cancelled":
             products = {p.id: p.restock_quantity for p in restock.items}
-            restore_inventory(db, products, add_stock=False)
+            await restore_inventory(db, products, add_stock=False)
 
         elif new_data.status == "Completed":
-            add_restock_items_to_inventory(restock, db)
+            await add_restock_items_to_inventory(restock, db)
 
-        db.commit()
-        db.refresh(restock)
+        await db.commit()
+        await db.refresh(restock)
         return RestockResponse.model_validate(restock)
 
     except HTTPException as e:
@@ -161,20 +169,22 @@ def update_restock(restock_id: UUID,
 
 @router.delete("/del/{restock_id}",
                status_code=status.HTTP_204_NO_CONTENT)
-def delete_restock(restock_id: UUID,
+async def delete_restock(restock_id: UUID,
                    db: db_dependency,
                    current_user: Annotated[dict, Depends(require_access_level(4))]):
     try:
-        restock = db.query(Restock).filter(Restock.id == restock_id).first()
+        stmt = select(Restock).where(Restock.id == restock_id)
+        result = await db.execute(stmt)
+        restock = result.scalar_one_or_none()()
         if not restock:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Restock Record Not Found")
 
         products = {p.id: p.restock_quantity for p in restock.items}
-        restore_inventory(db, products, add_stock=False)
+        await restore_inventory(db, products, add_stock=False)
 
-        db.delete(restock)
-        db.commit()
+        await db.delete(restock)
+        await db.commit()
         return
 
     except HTTPException as e:

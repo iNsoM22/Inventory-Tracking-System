@@ -9,6 +9,7 @@ from validations.role import (
 from utils.db import db_dependency
 from schemas.role import Role
 from utils.auth import require_access_level
+from sqlalchemy.future import select
 
 
 router = APIRouter(prefix="/management")
@@ -21,10 +22,13 @@ async def create_role(roles: List[RoleRequest], db: db_dependency,
                       current_user: Annotated[dict, Depends(require_access_level(5))]):
     """Create a New Role."""
     try:
-        new_roles = [Role(**role.model_dump()) for role in roles]
-        db.add_all(new_roles)
-        db.commit()
+        new_roles = []
+        for role in roles:
+            new_role = Role(**role.model_dump())
+            new_roles.append(new_role)
+            await db.add(new_role)
 
+        await db.commit()
         return [RoleResponse.model_validate(new_role) for new_role in new_roles]
 
     except Exception as e:
@@ -40,7 +44,9 @@ async def get_roles(db: db_dependency,
                     include_users: bool = True):
     """Get Roles details along with associated Users."""
     try:
-        roles = db.query(Role).all()
+        stmt = select(Role)
+        result = await db.execute(stmt)
+        roles = result.scalars().all()
         if include_users:
             return [RoleResponseWithUsers.model_validate(role) for role in roles]
 
@@ -59,11 +65,9 @@ async def update_role(updated_data: List[RoleUpdateRequest], db: db_dependency,
     """Update Existing Roles."""
     try:
         role_levels_to_update = {role.level: role for role in updated_data}
-        roles = (
-            db.query(Role)
-            .filter(Role.level.in_(role_levels_to_update))
-            .all()
-        )
+        stmt = select(Role).where(Role.level.in_(role_levels_to_update))
+        result = await db.execute(stmt)
+        roles = result.scalars().all()
 
         for role in roles:
             updated_role = role_levels_to_update.get(role.level, None)
@@ -74,10 +78,13 @@ async def update_role(updated_data: List[RoleUpdateRequest], db: db_dependency,
 
             role.role = updated_role.role
 
-        db.commit()
-        db.refresh(roles)
+        await db.commit()
+        response = []
+        for role in roles:
+            await db.refresh(role)
+            response.append(RoleResponse.model_validate(role))
 
-        return [RoleResponse.model_validate(role) for role in roles]
+        return response
 
     except HTTPException as e:
         raise e
@@ -93,19 +100,17 @@ async def delete_role(roles_for_deletion: List[RoleDeleteRequest], db: db_depend
     """Delete Roles."""
     try:
         role_levels_to_delete = [role.level for role in roles_for_deletion]
-        roles_to_delete = (
-            db.query(Role)
-            .filter(Role.level.in_(role_levels_to_delete))
-            .all()
-        )
+        stmt = select(Role).where(Role.level.in_(role_levels_to_delete))
+        result = await db.execute(stmt)
+        roles_to_delete = result.scalars().all()
         if not roles_to_delete:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Roles Not Found")
 
         for role in roles_to_delete:
-            db.delete(role)
+            await db.delete(role)
 
-        db.commit()
+        await db.commit()
 
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -5,6 +5,7 @@ from utils.db import db_dependency
 from schemas.product import Product
 from uuid import UUID
 from utils.auth import require_access_level
+from sqlalchemy.future import select
 
 
 router = APIRouter(prefix="/products")
@@ -18,14 +19,20 @@ async def add_products(products: List[ProductRequest],
                        current_user: Annotated[dict, Depends(require_access_level(3))]):
     """Add a List of New Products."""
     try:
-        new_products = [Product(**product.model_dump())
-                        for product in products]
-        db.add_all(new_products)
-        db.commit()
-
+        new_products = []
+        for product in products:
+            new_product = Product(**product.model_dump())
+            new_products.append(new_product)
+            await db.add(new_product)
+            
+        await db.commit()
+        
+        response = []
         for product in new_products:
             db.refresh(product)
-        return [ProductResponse.model_validate(prod) for prod in new_products]
+            response.append(ProductResponse.model_validate(product))
+        
+        return response
 
     except HTTPException as e:
         raise e
@@ -40,7 +47,9 @@ async def add_products(products: List[ProductRequest],
             status_code=status.HTTP_200_OK)
 async def get_active_products(db: db_dependency):
     try:
-        products = db.query(Product).filter(Product.is_removed == False).all()
+        stmt = select(Product).where(Product.is_removed == False)
+        result = await db.execute(stmt)
+        products = result.scalars().all()
         return [ProductResponseWithCategory.model_validate(product) for product in products]
 
     except HTTPException as e:
@@ -57,7 +66,9 @@ async def get_active_products(db: db_dependency):
 async def get_products(db: db_dependency):
     """Get All Products (Active + Removed)."""
     try:
-        products = db.query(Product).all()
+        stmt = select(Product)
+        result = await db.execute(stmt)
+        products = result.scalars().all()
         return [ProductResponseWithCategory.model_validate(product) for product in products]
 
     except HTTPException as e:
@@ -73,8 +84,10 @@ async def get_products(db: db_dependency):
             status_code=status.HTTP_200_OK)
 async def get_product(product_id: UUID, db: db_dependency):
     try:
-        product = db.query(Product).filter(
-            Product.id == product_id, Product.is_removed == False).first()
+        stmt = select(Product).where(Product.id == product_id, Product.is_removed == False)
+        result = await db.execute(stmt)
+        product = result.scalar_one_or_none()
+        
         if not product:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Product Not Found")
@@ -97,8 +110,10 @@ async def update_product(product_id: UUID,
                          db: db_dependency,
                          current_user: Annotated[dict, Depends(require_access_level(4))]):
     try:
-        product_to_update = db.query(Product).filter(
-            Product.id == product_id).first()
+        stmt = select(Product).where(Product.id == product_id)
+        result = await db.execute(stmt)
+        product_to_update = result.scalar_one_or_none()
+        
         if not product_to_update:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Product Not Found")
@@ -106,8 +121,8 @@ async def update_product(product_id: UUID,
         for field, value in update_data.model_dump(exclude_unset=True).items():
             setattr(product_to_update, field, value)
 
-        db.commit()
-        db.refresh(product_to_update)
+        await db.commit()
+        await db.refresh(product_to_update)
         return ProductResponse.model_validate(product_to_update)
 
     except HTTPException as e:
@@ -124,10 +139,13 @@ async def delete_product(product_id: UUID,
                          db: db_dependency,
                          current_user: Annotated[dict, Depends(require_access_level(4))]):
     try:
-        product = db.query(Product).filter(Product.id == product_id).first()
+        stmt = select(Product).where(Product.id == product_id)
+        result = await db.execute(stmt)
+        product = result.scalar_one_or_none()
+        
         if product:
-            db.delete(product)
-            db.commit()
+            await db.delete(product)
+            await db.commit()
             return
 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,

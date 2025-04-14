@@ -3,7 +3,8 @@ from typing import List, Annotated
 from utils.db import db_dependency
 from schemas.product import Category
 from validations.product import CategoryRequest, CategoryResponse, CategoryResponseWithProducts
-from utils.auth import user_dependency, require_access_level
+from utils.auth import require_access_level
+from sqlalchemy.future import select
 
 
 router = APIRouter(prefix="/categories")
@@ -15,7 +16,9 @@ router = APIRouter(prefix="/categories")
 async def get_categories(db: db_dependency):
     """Retrieve all Categories."""
     try:
-        categories = db.query(Category).all()
+        stmt = select(Category)
+        result = await db.execute(stmt)
+        categories = result.scalars().all()
         return [CategoryResponseWithProducts.model_validate(category) for category in categories]
 
     except Exception as e:
@@ -30,13 +33,19 @@ async def add_categories(categories: List[CategoryRequest], db: db_dependency,
                          current_user: Annotated[dict, Depends(require_access_level(3))]):
     """Add a List of New Categories."""
     try:
-        new_categories = [Category(**cat.model_dump()) for cat in categories]
-        db.add_all(new_categories)
-        db.commit()
-
+        new_categories = []
+        for cat in categories:
+            new_category = Category(**cat.model_dump())
+            new_categories.append(new_category)
+            await db.add(new_category)
+        
+        await db.commit()
+        response = []
         for category in new_categories:
-            db.refresh(category)
-        return [CategoryResponse.model_validate(cat) for cat in new_categories]
+            await db.refresh(category)
+            response.append(CategoryResponse.model_validate(category))
+        
+        return response
 
     except HTTPException as e:
         raise e
@@ -52,7 +61,9 @@ async def add_categories(categories: List[CategoryRequest], db: db_dependency,
 async def get_category(id: int, db: db_dependency):
     """Retrieve a Category by ID."""
     try:
-        category = db.query(Category).filter(Category.id == id).first()
+        stmt = select(Category).where(Category.id == id)
+        result = await db.execute(stmt)
+        category = result.scalar_one_or_none()
 
         if not category:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -74,11 +85,13 @@ async def delete_category(id: int, db: db_dependency,
                           current_user: Annotated[dict, Depends(require_access_level(3))]):
     """Delete a Category by ID."""
     try:
-        category = db.query(Category).filter(Category.id == id).first()
+        stmt = select(Category).where(Category.id == id)
+        result = await db.execute(stmt)
+        category = result.scalar_one_or_none()
 
         if category:
-            db.delete(category)
-            db.commit()
+            await db.delete(category)
+            await db.commit()
             return
 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -99,12 +112,14 @@ async def update_category(id: int, updated_data: CategoryRequest, db: db_depende
                           current_user: Annotated[dict, Depends(require_access_level(3))]):
     """Update a Category by ID."""
     try:
-        category = db.query(Category).filter(Category.id == id).first()
+        stmt = select(Category).where(Category.id == id)
+        result = await db.execute(stmt)
+        category = result.scalar_one_or_none()
 
         if category:
             category.category = updated_data.category
-            db.commit()
-            db.refresh(category)
+            await db.commit()
+            await db.refresh(category)
             return CategoryResponse.model_validate(category)
 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,

@@ -9,6 +9,7 @@ from schemas.removal import StockRemoval, RemovalItems
 from utils.stock_restore import restore_inventory
 from utils.auth import require_access_level
 from utils.create_transaction import add_transaction
+from sqlalchemy.future import select
 
 
 router = APIRouter(prefix="/stock-removals")
@@ -17,18 +18,17 @@ router = APIRouter(prefix="/stock-removals")
 @router.post("/add",
              response_model=StockRemovalResponse,
              status_code=status.HTTP_201_CREATED)
-def create_stock_removal(removal_data: StockRemovalRequest,
+async def create_stock_removal(removal_data: StockRemovalRequest,
                          db: db_dependency,
                          current_user: Annotated[dict, Depends(require_access_level(2))]):
     try:
         product_ids = [item.product_id for item in removal_data.items]
-        inventories = {
-            inv.product_id: inv
-            for inv in db.query(Inventory).filter(
-                Inventory.store_id == removal_data.store_id,
-                Inventory.product_id.in_(product_ids)
-            ).all()
-        }
+        stmt = select(Inventory).filter(
+            Inventory.store_id == removal_data.store_id,
+            Inventory.product_id.in_(product_ids)
+        )
+        result = await db.execute(stmt)
+        inventories = {inv.product_id: inv for inv in result.scalars().all()}
 
         removal_items = []
 
@@ -60,10 +60,10 @@ def create_stock_removal(removal_data: StockRemovalRequest,
             is_cancelled=removal_data.is_cancelled,
             items=removal_items)
 
-        add_transaction(stock_removal, current_user["id"], db)
-        db.add(stock_removal)
-        db.commit()
-        db.refresh(stock_removal)
+        await add_transaction(stock_removal, current_user["id"], db)
+        await db.add(stock_removal)
+        await db.commit()
+        await db.refresh(stock_removal)
 
         return StockRemovalResponse.model_validate(stock_removal)
 
@@ -78,12 +78,13 @@ def create_stock_removal(removal_data: StockRemovalRequest,
 @router.get("/get/{removal_id}",
             response_model=StockRemovalResponse,
             status_code=status.HTTP_200_OK)
-def get_stock_removal(removal_id: UUID,
+async def get_stock_removal(removal_id: UUID,
                       db: db_dependency,
                       current_user: Annotated[dict, Depends(require_access_level(2))]):
     try:
-        stock_removal = db.query(StockRemoval).filter(
-            StockRemoval.id == removal_id).first()
+        stmt = select(StockRemoval).where(StockRemoval.id == removal_id)
+        result = await db.execute(stmt)
+        stock_removal = result.scalars().first()
         if not stock_removal:
             raise HTTPException(
                 status_code=404, detail="Stock Removal not found.")
@@ -98,11 +99,13 @@ def get_stock_removal(removal_id: UUID,
 
 
 @router.get("/all", response_model=List[StockRemovalResponse])
-def get_stock_removals(db: db_dependency,
+async def get_stock_removals(db: db_dependency,
                        current_user: Annotated[dict, Depends(require_access_level(2))],
                        limit: int = 10, offset: int = 0):
     try:
-        removals = db.query(StockRemoval).offset(offset).limit(limit).all()
+        stmt = select(StockRemoval).offset(offset).limit(limit)
+        result = await db.execute(stmt)
+        removals = result.scalars().all()
         return [StockRemovalResponse.model_validate(r) for r in removals]
 
     except HTTPException as e:
@@ -116,7 +119,7 @@ def get_stock_removals(db: db_dependency,
 @router.get("/filter",
             response_model=List[StockRemovalResponse],
             status_code=status.HTTP_200_OK)
-def filter_stock_removals(db: db_dependency,
+async def filter_stock_removals(db: db_dependency,
                           current_user: Annotated[dict, Depends(require_access_level(2))],
                           store_id: Optional[UUID] = None,
                           start_date: Optional[date] = None,
@@ -125,20 +128,21 @@ def filter_stock_removals(db: db_dependency,
                           limit: int = 50,
                           offset: int = 0):
     try:
-        query = db.query(StockRemoval)
+        stmt = select(StockRemoval)
+
         if store_id:
-            query = query.filter(StockRemoval.store_id == store_id)
-
+            stmt = stmt.where(StockRemoval.store_id == store_id)
         if start_date:
-            query = query.filter(StockRemoval.date >= start_date)
-
+            stmt = stmt.where(StockRemoval.date >= start_date)
         if end_date:
-            query = query.filter(StockRemoval.date <= end_date)
-
+            stmt = stmt.where(StockRemoval.date <= end_date)
         if is_cancelled is not None:
-            query = query.filter(StockRemoval.is_cancelled == is_cancelled)
+            stmt = stmt.where(StockRemoval.is_cancelled == is_cancelled)
 
-        removals = query.offset(offset).limit(limit).all()
+        stmt = stmt.offset(offset).limit(limit)
+        result = await db.execute(stmt)
+        removals = result.scalars().all()
+        
         return [StockRemovalResponse.model_validate(r) for r in removals]
 
     except Exception as e:
@@ -149,13 +153,14 @@ def filter_stock_removals(db: db_dependency,
 @router.put("/mod/{removal_id}",
             response_model=StockRemovalResponse,
             status_code=status.HTTP_202_ACCEPTED)
-def update_stock_removal(removal_id: UUID,
+async def update_stock_removal(removal_id: UUID,
                          update_data: StockRemovalUpdateRequest,
                          db: db_dependency,
                          current_user: Annotated[dict, Depends(require_access_level(3))]):
     try:
-        stock_removal = db.query(StockRemoval).filter(
-            StockRemoval.id == removal_id).first()
+        stmt = select(StockRemoval).where(StockRemoval.id == removal_id)
+        result = await db.execute(stmt)
+        stock_removal = result.scalars().first()
         if not stock_removal:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Stock Removal Record Not Found")
@@ -170,10 +175,10 @@ def update_stock_removal(removal_id: UUID,
         if update_data.is_cancelled:
             products = {
                 p.product_id: p.removal_quantity for p in stock_removal.items}
-            restore_inventory(db, products, add_stock=True)
+            await restore_inventory(db, products, add_stock=True)
 
-        db.commit()
-        db.refresh(stock_removal)
+        await db.commit()
+        await db.refresh(stock_removal)
         return StockRemovalResponse.model_validate(stock_removal)
 
     except HTTPException as e:
@@ -186,22 +191,22 @@ def update_stock_removal(removal_id: UUID,
 
 @router.delete("/del/{removal_id}",
                status_code=status.HTTP_204_NO_CONTENT)
-def delete_stock_removal(removal_id: UUID,
+async def delete_stock_removal(removal_id: UUID,
                          db: db_dependency,
                          current_user: Annotated[dict, Depends(require_access_level(3))]):
     try:
-        stock_removal = db.query(StockRemoval).filter(
-            StockRemoval.id == removal_id).first()
+        stmt = select(StockRemoval).where(StockRemoval.id == removal_id)
+        result = await db.execute(stmt)
+        stock_removal = result.scalars().first()
         if not stock_removal:
             raise HTTPException(
                 status_code=404, detail="Stock Removal not found.")
 
-        products = {
-            p.product_id: p.removal_quantity for p in stock_removal.items}
-        restore_inventory(db, products, add_stock=True)
+        products = {p.product_id: p.removal_quantity for p in stock_removal.items}
+        await restore_inventory(db, products, add_stock=True)
 
-        db.delete(stock_removal)
-        db.commit()
+        await db.delete(stock_removal)
+        await db.commit()
         return
 
     except HTTPException as e:

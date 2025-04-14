@@ -14,6 +14,7 @@ from utils.auth import (
 )
 from typing import Annotated, List
 from uuid import UUID
+from sqlalchemy.future import select
 
 
 router = APIRouter(prefix="/users")
@@ -32,9 +33,9 @@ async def create_public_user(user_data: UserRequest, db: db_dependency):
             is_internal_user=user_data.is_internal_user
         )
 
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
+        await db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
 
         return UserRead.model_validate(new_user)
 
@@ -67,9 +68,9 @@ async def create_internal_user(user_data: UserRequest,
                 detail="Cannot Create a User with Equal or Higher Privileges."
             )
 
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
+        await db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
 
         return UserRead.model_validate(new_user)
 
@@ -97,13 +98,16 @@ async def get_user_from_identifier(identifier: str | UUID,
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could Not Validate User"
             )
+        stmt = select(User)
         if from_username:
-            user = db.query(User).filter(User.username == identifier).first()
+            stmt = stmt.where(User.username == identifier)
         elif from_email:
-            user = db.query(User).filter(User.email == identifier).first()
+            stmt = stmt.where(User.email == identifier)
         else:
-            user = db.query(User).filter(User.id == identifier).first()
-
+            stmt = stmt.where(User.id == identifier)
+        
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()        
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -129,7 +133,9 @@ async def get_all_users(db: db_dependency,
                         limit: int = 50,
                         offset: int = 0):
     try:
-        users = db.query(User).offset(offset).limit(limit).all()
+        stmt = select(User).offset(offset).limit(limit)
+        result = await db.execute(stmt)
+        users = result.scalars().all()
         return [UserRead.model_validate(user) for user in users]
 
     except HTTPException as e:
@@ -156,8 +162,9 @@ async def modify_user(updated_user: UserPublicUpdateRequest,
                 detail="Could Not Validate User"
             )
 
-        user = db.query(User).filter(User.id ==
-                                     current_user["id"]).first()
+        stmt = select(User).where(User.id == current_user["id"])
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
 
         if not user:
             raise HTTPException(
@@ -172,8 +179,8 @@ async def modify_user(updated_user: UserPublicUpdateRequest,
         if updated_user.new_email:
             user.email = updated_user.new_email
 
-        db.commit()
-        db.refresh(user)
+        await db.commit()
+        await db.refresh(user)
 
         return UserRead.model_validate(user)
 
@@ -200,19 +207,17 @@ async def modify_any_user(updated_user: UserManagementUpdateRequest,
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could Not Validate User"
             )
-
+        stmt = select(User)
         if updated_user.username:
-            user = db.query(User).filter(User.username ==
-                                         updated_user.username).first()
+            stmt = stmt.where(User.username == updated_user.username)
         elif updated_user.email:
-            user = db.query(User).filter(User.email ==
-                                         updated_user.email).first()
+            stmt = stmt.where(User.email == updated_user.email)
         else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username or Email Required"
-            )
-
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail="Username or Email Required")
+            
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -234,8 +239,8 @@ async def modify_any_user(updated_user: UserManagementUpdateRequest,
         if updated_user.new_level:
             user.level = updated_user.new_level
 
-        db.commit()
-        db.refresh(user)
+        await db.commit()
+        await db.refresh(user)
 
         return UserRead.model_validate(user)
 

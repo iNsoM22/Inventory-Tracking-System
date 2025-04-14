@@ -13,6 +13,7 @@ from validations.refund import (
 from utils.check_inventory import check_and_add_inventory
 from utils.auth import user_dependency, require_access_level
 from utils.create_transaction import add_transaction
+from sqlalchemy.future import select
 
 
 router = APIRouter(prefix="/refunds")
@@ -21,18 +22,18 @@ router = APIRouter(prefix="/refunds")
 @router.post("/add",
              response_model=RefundResponse,
              status_code=status.HTTP_201_CREATED)
-def create_refund(refund_data: RefundRequest,
+async def create_refund(refund_data: RefundRequest,
                   db: db_dependency,
                   current_user: user_dependency):
     try:
-        order = db.query(Order).filter(
-            Order.id == refund_data.order_id).first()
+        stmt = select(Order).filter(Order.id == refund_data.order_id)
+        result = await db.execute(stmt)
+        order = result.scalar_one_or_none()
         if not order:
             raise HTTPException(status_code=404, detail="Order Not Found")
 
         refund_data.validate_application(order)
-        amount = refund_data.amount or refund_data.calculate_total_amount(
-            order)
+        amount = refund_data.amount or refund_data.calculate_total_amount(order)
 
         refund_items = [RefundItems(product_id=item.product_id,
                                     quantity=item.quantity) for item in refund_data.items]
@@ -51,15 +52,15 @@ def create_refund(refund_data: RefundRequest,
 
         if refund_data.status == "Refunded":
             order.status = "Refunded"
-            check_and_add_inventory(new_refund, operation_type="Sale", db=db)
-            add_transaction(new_refund, current_user["id"], db)
+            await check_and_add_inventory(new_refund, operation_type="Sale", db=db)
+            await add_transaction(new_refund, current_user["id"], db)
 
         else:
             order.status = "For Refund"
 
-        db.add(new_refund)
-        db.commit()
-        db.refresh(new_refund)
+        await db.add(new_refund)
+        await db.commit()
+        await db.refresh(new_refund)
 
         return RefundResponse.model_validate(new_refund)
 
@@ -78,11 +79,14 @@ def create_refund(refund_data: RefundRequest,
 @router.get("/get/{refund_id}",
             response_model=RefundResponse,
             status_code=status.HTTP_200_OK)
-def get_refund(refund_id: UUID,
+async def get_refund(refund_id: UUID,
                db: db_dependency,
                current_user: user_dependency):
     try:
-        refund = db.query(Refund).filter(Refund.id == refund_id).first()
+        stmt = select(Refund).filter(Refund.id == refund_id)
+        result = await db.execute(stmt)
+        refund = result.scalar_one_or_none()
+        
         if not refund:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Refund Application Not Found")
@@ -90,6 +94,7 @@ def get_refund(refund_id: UUID,
         if not current_user["is_internal_user"] and refund.order.customer.user_id != current_user["id"]:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail="Only the Customer or Internal Users are allowed to view Refund Applications")
+        
         return RefundResponse.model_validate(refund)
 
     except HTTPException as e:
@@ -103,18 +108,14 @@ def get_refund(refund_id: UUID,
 @router.get("/all",
             response_model=List[RefundResponse],
             status_code=status.HTTP_200_OK)
-def get_all_refunds(db: db_dependency,
+async def get_all_refunds(db: db_dependency,
                     current_user: Annotated[dict, Depends(require_access_level(3))],
                     limit: int = 100,
                     offset: int = 0):
     try:
-        refunds = (
-            db.query(Refund)
-            .order_by(Refund.application_date.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        stmt = select(Refund).order_by(Refund.application_date.desc()).offset(offset).limit(limit)
+        result = await db.execute(stmt)
+        refunds = result.scalars().all()
         return [RefundResponse.model_validate(refund) for refund in refunds]
 
     except HTTPException as e:
@@ -128,12 +129,14 @@ def get_all_refunds(db: db_dependency,
 @router.put("/mod/{refund_id}",
             response_model=RefundResponse,
             status_code=status.HTTP_202_ACCEPTED)
-def update_refund(refund_id: UUID,
+async def update_refund(refund_id: UUID,
                   update_data: RefundUpdateRequest,
                   db: db_dependency,
                   current_user: user_dependency):
     try:
-        refund = db.query(Refund).filter(Refund.id == refund_id).first()
+        stmt = select(Refund).filter(Refund.id == refund_id)
+        result = await db.execute(stmt)
+        refund = result.scalar_one_or_none()
         if not refund:
             raise HTTPException(
                 status_code=404, detail="Refund Application Not Found")
@@ -155,11 +158,11 @@ def update_refund(refund_id: UUID,
 
         if update_data.status == "Refunded":
             refund.order.status = "Refunded"
-            add_transaction(refund, current_user["id"], db)
-            check_and_add_inventory(refund, operation_type="Sale", db=db)
+            await add_transaction(refund, current_user["id"], db)
+            await check_and_add_inventory(refund, operation_type="Sale", db=db)
 
-        db.commit()
-        db.refresh(refund)
+        await db.commit()
+        await db.refresh(refund)
         return RefundResponse.model_validate(refund)
 
     except HTTPException as e:
@@ -172,18 +175,20 @@ def update_refund(refund_id: UUID,
 
 @router.delete("/del/{refund_id}",
                status_code=status.HTTP_204_NO_CONTENT)
-def delete_refund(refund_id: UUID, db: db_dependency,
+async def delete_refund(refund_id: UUID, db: db_dependency,
                   current_user: Annotated[dict, Depends(require_access_level(3))]):
     """Delete a Refund Application, Usage is highly Discouraged. 
         Use Update End-Point for Managing Application."""
     try:
-        refund = db.query(Refund).filter(Refund.id == refund_id).first()
+        stmt = select(Refund).filter(Refund.id == refund_id)
+        result = await db.execute(stmt)
+        refund = result.scalar_one_or_none()
         if not refund:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Refund Not Found")
 
-        db.delete(refund)
-        db.commit()
+        await db.delete(refund)
+        await db.commit()
         return
 
     except HTTPException as e:

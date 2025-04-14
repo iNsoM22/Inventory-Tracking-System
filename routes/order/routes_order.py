@@ -11,6 +11,7 @@ from validations.order import OrderRequest, OrderResponse, OrderUpdateRequest, C
 from utils.check_inventory import check_and_remove_inventory, check_and_add_inventory
 from utils.auth import require_access_level, user_dependency
 from utils.create_transaction import add_transaction
+from sqlalchemy.future import select
 
 
 router = APIRouter(prefix="/orders")
@@ -19,12 +20,14 @@ router = APIRouter(prefix="/orders")
 @router.post("/add",
              response_model=OrderResponse,
              status_code=status.HTTP_201_CREATED)
-def create_order(order_data: OrderRequest,
+async def create_order(order_data: OrderRequest,
                  db: db_dependency,
                  current_user: user_dependency):
     try:
-        customer = db.query(Customer).filter(
-            Customer.id == order_data.customer_id).first()
+        stmt = select(Customer).where(Customer.id == order_data.customer_id)
+        result = await db.execute(stmt)
+        customer = result.scalars().first()
+        
         if not customer:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Customer Not Found")
@@ -38,8 +41,9 @@ def create_order(order_data: OrderRequest,
                                 detail="Cannot Place Order with an Empty Cart")
 
         product_ids = [item.product_id for item in order_data.items]
-        products = {p.id: p for p in db.query(Product).filter(
-            Product.id.in_(product_ids)).all()}
+        stmt = select(Product).where(Product.id.in_(product_ids))
+        result = await db.execute(stmt)
+        products = {p.id: p for p in result.scalars().all()}
 
         cart_items, total_amount, total_discount, total_tax = create_cart_items(
             order_data.items, products)
@@ -54,11 +58,11 @@ def create_order(order_data: OrderRequest,
             order_mode=order_data.order_mode,
             items=cart_items
         )
-        check_and_remove_inventory(new_order, order_data.store_id, db)
+        await check_and_remove_inventory(new_order, order_data.store_id, db)
         add_transaction(new_order, current_user["id"], db)
-        db.add(new_order)
-        db.commit()
-        db.refresh(new_order)
+        await db.add(new_order)
+        await db.commit()
+        await db.refresh(new_order)
         return OrderResponse.model_validate(new_order)
 
     except HTTPException as e:
@@ -72,10 +76,13 @@ def create_order(order_data: OrderRequest,
 @router.get("/get/{order_id}",
             response_model=OrderResponse,
             status_code=status.HTTP_200_OK)
-def get_order(order_id: UUID, db: db_dependency,
+async def get_order(order_id: UUID, db: db_dependency,
               current_user: user_dependency):
     try:
-        order = db.query(Order).filter(Order.id == order_id).first()
+        stmt = select(Order).where(Order.id == order_id)
+        result = await db.execute(stmt)
+        order = result.scalars().first()
+        
         if not order:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Order Not Found")
@@ -97,7 +104,9 @@ async def get_orders(db: db_dependency,
                      limit: int = 50,
                      offset: int = 0):
     try:
-        orders = db.query(Order).offset(offset).limit(limit).all()
+        stmt = select(Order).offset(offset).limit(limit)
+        result = await db.execute(stmt)
+        orders = result.scalars().all()
         return [OrderResponse.model_validate(order) for order in orders]
 
     except HTTPException as e:
@@ -111,11 +120,14 @@ async def get_orders(db: db_dependency,
 @router.put("/mod/{order_id}",
             response_model=OrderResponse,
             status_code=status.HTTP_202_ACCEPTED)
-def update_order(order_id: UUID, new_order_data: OrderUpdateRequest,
+async def update_order(order_id: UUID, new_order_data: OrderUpdateRequest,
                  db: db_dependency, current_user: user_dependency):
     """Status Update for the Order."""
     try:
-        order = db.query(Order).filter(Order.id == order_id).first()
+        stmt = select(Order).where(Order.id == order_id)
+        result = await db.execute(stmt)
+        order = result.scalars().first()
+        
         if not order:
             raise HTTPException(status_code=404, detail="Order Not Found")
 
@@ -127,10 +139,10 @@ def update_order(order_id: UUID, new_order_data: OrderUpdateRequest,
         order.date_received = new_order_data.date_received
 
         if new_order_data.status == "Cancelled":
-            check_and_add_inventory(order, operation_type="Sale", db=db)
+            await check_and_add_inventory(order, operation_type="Sale", db=db)
 
-        db.commit()
-        db.refresh(order)
+        await db.commit()
+        await db.refresh(order)
         return OrderResponse.model_validate(order)
 
     except HTTPException as e:
@@ -148,14 +160,16 @@ async def delete_order(order_id: UUID, db: db_dependency,
     """Delete an Order. This End-Point Should be Used Carefully, 
     Otherwise it will result in discrepencies."""
     try:
-        order = db.query(Order).filter(Order.id == order_id).first()
+        stmt = select(Order).where(Order.id == order_id)
+        result = await db.execute(stmt)
+        order = result.scalars().first()
 
         if not order:
             raise HTTPException(status_code=404, detail="Order Not Found")
 
-        check_and_add_inventory(order, operation_type="Sale", db=db)
-        db.delete(order)
-        db.commit()
+        await check_and_add_inventory(order, operation_type="Sale", db=db)
+        await db.delete(order)
+        await db.commit()
         return
 
     except HTTPException as e:
@@ -169,13 +183,16 @@ async def delete_order(order_id: UUID, db: db_dependency,
 @router.put("/mod/cart/{order_id}",
             response_model=OrderResponse,
             status_code=status.HTTP_202_ACCEPTED)
-def update_cart_items(order_id: UUID,
+async def update_cart_items(order_id: UUID,
                       items_update_request: List[CartItemUpdateRequest],
                       db: db_dependency,
                       current_user: Annotated[dict, Depends(require_access_level(4))]):
     """Update Cart Items of an Order, Usage is highly Discouraged."""
     try:
-        order = db.query(Order).filter(Order.id == order_id).first()
+        stmt = select(Order).where(Order.id == order_id)
+        result = await db.execute(stmt)
+        order = result.scalars().first()
+
         if not order:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Order Not Found")
@@ -190,7 +207,7 @@ def update_cart_items(order_id: UUID,
 
             if item_update.quantity == 0:
                 del cart_items_dict[item_update.product_id]
-                db.delete(cart_item)
+                await db.delete(cart_item)
                 continue
 
             if item_update.quantity is not None:
@@ -198,9 +215,10 @@ def update_cart_items(order_id: UUID,
 
             if item_update.discount is not None:
                 cart_item.discount = item_update.discount
-
-        products = {p.id: p for p in db.query(Product.id, Product.price, Product.discount).filter(
-            Product.id.in_(cart_items_dict)).all()}
+        
+        stmt = select(Product.id, Product.price, Product.discount).where(Product.id.in_(cart_items_dict))
+        results = await db.execute(stmt)
+        products = {p.id: p for p in results}
         cart_items, total_amount, total_discount, total_tax = create_cart_items(
             cart_items_dict.values(), products)
 
@@ -209,8 +227,8 @@ def update_cart_items(order_id: UUID,
         order.tax = total_tax
         order.items = cart_items
 
-        db.commit()
-        db.refresh(order)
+        await db.commit()
+        await db.refresh(order)
 
         return OrderResponse.model_validate(order)
 

@@ -1,20 +1,19 @@
 from uuid import UUID
 from schemas.order import Order
 from schemas.inventory import Inventory
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from schemas.refund import Refund
 from schemas.transaction import Transaction
+from sqlalchemy.future import select
 
 
-def check_and_remove_inventory(order: Order,
+async def check_and_remove_inventory(order: Order,
                                store_id: UUID,
-                               db: Session):
+                               db: AsyncSession):
     products = {p.product_id: p for p in order.items}
-    inventories = (
-        db.query(Inventory)
-        .filter(Inventory.product_id.in_(products), Inventory.store_id == store_id)
-        .all()
-    )
+    stmt = select(Inventory).where(Inventory.product_id.in_(products), Inventory.store_id == store_id)
+    results = await db.execute(stmt)
+    inventories = results.scalars().all()
     for inventory in inventories:
         product = products[inventory.product_id]
         if inventory.quantity < product.quantity:
@@ -24,26 +23,24 @@ def check_and_remove_inventory(order: Order,
         inventory.quantity -= product.quantity
 
 
-def check_and_add_inventory(order, operation_type: str, db: Session):
+async def check_and_add_inventory(order, operation_type: str, db: AsyncSession):
+    stmt = select(Transaction).where(Transaction.type == operation_type)
+    
     if isinstance(order, Order):
-        transaction = (
-            db.query(Transaction)
-            .filter(Transaction.operation_id == order.id, Transaction.type == operation_type)
-            .first()
-        )
+        stmt = stmt.where(Transaction.operation_id == order.id)
+        result = await db.execute(stmt)
+        transaction = result.scalars().first()
+        
     elif isinstance(order, Refund):
-        transaction = (
-            db.query(Transaction)
-            .filter(Transaction.operation_id == order.order_id, Transaction.type == operation_type)
-            .first()
-        )
+        stmt = stmt.where(Transaction.operation_id == order.order_id)
+        result = await db.execute(stmt)
+        transaction = result.scalars().first()
 
     products = {p.product_id: p for p in order.items}
-    inventories = (
-        db.query(Inventory)
-        .filter(Inventory.product_id.in_(products), Inventory.store_id == transaction.store_id)
-        .all()
-    )
+    stmt = select(Inventory).where(Inventory.product_id.in_(products), Inventory.store_id == order.store_id)
+    results = await db.execute(stmt)
+    inventories = results.scalars().all()
+    
     for inventory in inventories:
         product = products[inventory.product_id]
         inventory.quantity += product.quantity

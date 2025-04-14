@@ -5,6 +5,7 @@ from validations.location import LocationRequest, LocationResponse, LocationResp
 from utils.db import db_dependency
 from utils.auth import require_access_level
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.future import select
 
 
 router = APIRouter(prefix="/locations")
@@ -18,8 +19,8 @@ async def add_location(location: LocationRequest, db: db_dependency,
     try:
         new_location = Location(**location.model_dump())
         db.add(new_location)
-        db.commit()
-        db.refresh(new_location)
+        await db.commit()
+        await db.refresh(new_location)
         return LocationResponse.model_validate(new_location)
 
     except IntegrityError:
@@ -41,12 +42,9 @@ async def get_locations(db: db_dependency,
                         limit: int = 50,
                         offset: int = 0):
     try:
-        locations = (
-            db.query(Location)
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        stmt = select(Location).offset(offset).limit(limit)
+        result = await db.execute(stmt)
+        locations = result.scalars().all()
         return [LocationResponseWithStores.model_validate(location) for location in locations]
 
     except HTTPException as e:
@@ -62,7 +60,10 @@ async def get_locations(db: db_dependency,
             status_code=status.HTTP_200_OK)
 async def get_location(id: int, db: db_dependency):
     try:
-        location = db.query(Location).filter(Location.id == id).first()
+        stmt = select(Location).where(Location.id == id)
+        result = await db.execute()
+        location = result.scalar_one_or_none()
+        
         if not location:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Location Not Found")
@@ -81,10 +82,12 @@ async def get_location(id: int, db: db_dependency):
 async def delete_location(id: int, db: db_dependency,
                           current_user: Annotated[dict, Depends(require_access_level(4))]):
     try:
-        location = db.query(Location).filter(Location.id == id).first()
+        stmt = select(Location).where(Location.id == id)
+        result = await db.execute(stmt)
+        location = result.scalar_one_or_none()
         if location:
-            db.delete(location)
-            db.commit()
+            await db.delete(location)
+            await db.commit()
             return
 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -103,8 +106,10 @@ async def delete_location(id: int, db: db_dependency,
             status_code=status.HTTP_202_ACCEPTED)
 async def update_location(id: int, location: LocationRequest, db: db_dependency):
     try:
-        location_to_update = db.query(
-            Location).filter(Location.id == id).first()
+        stmt = select(Location).where(Location.id == id)
+        result = await db.execute(stmt)
+        location_to_update = result.scalar_one_or_none()
+        
         if not location_to_update:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Location Not Found")
@@ -118,8 +123,8 @@ async def update_location(id: int, location: LocationRequest, db: db_dependency)
         if location.address:
             location_to_update.address = location.address
 
-        db.commit()
-        db.refresh(location_to_update)
+        await db.commit()
+        await db.refresh(location_to_update)
         return LocationResponse.model_validate(location_to_update)
 
     except HTTPException as e:

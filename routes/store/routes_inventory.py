@@ -10,6 +10,7 @@ from utils.db import db_dependency
 from schemas.inventory import Inventory
 from uuid import UUID
 from utils.auth import require_access_level
+from sqlalchemy.future import select
 
 
 router = APIRouter(prefix="/inventory")
@@ -24,12 +25,10 @@ async def get_all_inventory(db: db_dependency,
                             limit: int = 100):
     """Retrieve all Inventory."""
     try:
-        complete_inventory = (
-            db.query(Inventory)
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        stmt = select(Inventory).offset(offset).limit(limit)
+        result = await db.execute(stmt)
+        complete_inventory = result.scalars().all()
+        
         if product_details:
             return [InventoryResponseWithProduct.model_validate(inventory)
                     for inventory in complete_inventory]
@@ -50,13 +49,9 @@ async def get_inventory_by_store(store_id: UUID, db: db_dependency,
                                  limit: int = 100):
     """Retrieve Inventory for a specific Store."""
     try:
-        complete_inventory = (
-            db.query(Inventory)
-            .filter(Inventory.store_id == store_id)
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        stmt = select(Inventory).where(Inventory.store_id == store_id).offset(offset).limit(limit)
+        result = await db.execute(stmt)
+        complete_inventory = result.scalars().all()
 
         if not complete_inventory:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -86,9 +81,9 @@ async def add_inventory(inventory: InventoryRequest, db: db_dependency,
 
         new_inventory = Inventory(**inventory.model_dump())
         db.add(new_inventory)
-        db.commit()
+        await db.commit()
+        await db.refresh(new_inventory)
 
-        db.refresh(new_inventory)
         return InventoryResponse.model_validate(new_inventory)
 
     except HTTPException as e:
@@ -108,8 +103,9 @@ async def modify_inventory(store_id: UUID,
                            current_user: Annotated[dict, Depends(require_access_level(3))]):
     """Update Inventory for a Specific Store."""
     try:
-        inventory_records = db.query(Inventory).filter(
-            Inventory.store_id == store_id).all()
+        stmt = select(Inventory).where(Inventory.store_id == store_id)
+        result = await db.execute(stmt)
+        inventory_records = result.scalars().all()
 
         if not inventory_records:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -119,8 +115,7 @@ async def modify_inventory(store_id: UUID,
             raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
                                 detail="No Updated Inventory Provided")
 
-        inventory_map = {
-            record.product_id: record for record in inventory_records}
+        inventory_map = {record.product_id: record for record in inventory_records}
         updated_items = []
 
         for update in update_data:
@@ -138,7 +133,7 @@ async def modify_inventory(store_id: UUID,
 
             updated_items.append(inventory)
 
-        db.commit()
+        await db.commit()
         return [InventoryResponse.model_validate(item) for item in updated_items]
 
     except HTTPException as e:
@@ -159,10 +154,13 @@ async def delete_inventory_by_store(store_id: UUID,
         Removal End-Points should be used to perform Inventory Removals.
     """
     try:
-        (db.query(Inventory)
-         .filter(Inventory.store_id == store_id, Inventory.product_id.in_(product_ids))
-         .delete(synchronize_session="fetch"))
-        db.commit()
+        stmt = select(Inventory).where(Inventory.store_id == store_id,
+                                       Inventory.product_id.in_(product_ids))
+        result = await db.execute(stmt)
+        inventory_records = result.scalars().all()
+        await db.execute(stmt)
+        await db.delete(inventory_records)
+        await db.commit()
 
         return
 

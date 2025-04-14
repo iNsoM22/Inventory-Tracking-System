@@ -1,23 +1,19 @@
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
 from schemas.inventory import Inventory
 from uuid import UUID
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 
-def restore_inventory(db: Session, store_id: UUID,
+async def restore_inventory(db: AsyncSession, store_id: UUID,
                       products: dict[UUID, int], add_stock: bool):
     """
     Restores inventory quantities based on the items from a stock removal operation.
     This is typically used when a stock removal is cancelled or deleted.
     """
-    inventories = {
-        inv.product_id: inv
-        for inv in (
-            db.query(Inventory)
-            .filter(Inventory.product_id.in_(products), Inventory.store_id == store_id)
-            .all()
-        )
-    }
+    stmt = select(Inventory).where(Inventory.product_id.in_(products), Inventory.store_id == store_id)
+    results = await db.execute(stmt)
+    inventories = {inv.product_id: inv for inv in results}
 
     for product_id, quantity in products.items():
         inventory = inventories.get(product_id)
