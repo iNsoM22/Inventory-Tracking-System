@@ -10,7 +10,7 @@ from validations.store import (
     StoreWithIncludeRelationsRequest
 )
 from utils.db import db_dependency
-from utils.auth import require_access_level
+from utils.auth import require_access_level, user_dependency
 from utils.information_loader import load_store_related_data
 
 
@@ -87,7 +87,10 @@ async def get_store_by_id(store_response_config: StoreWithIncludeRelationsReques
 @router.put("/update/{store_id}",
             response_model=StoreResponse,
             status_code=status.HTTP_200_OK)
-async def update_store(store_id: UUID, store: StoreUpdateRequest, db: db_dependency):
+async def update_store(store_id: UUID, 
+                       store: StoreUpdateRequest,
+                       db: db_dependency,
+                       current_user: Annotated[dict, Depends(require_access_level(4))]):
     """Update a Store's Details."""
     try:
         store_to_update = (
@@ -121,7 +124,9 @@ async def update_store(store_id: UUID, store: StoreUpdateRequest, db: db_depende
 
 @router.delete("/del/{store_id}",
                status_code=status.HTTP_204_NO_CONTENT)
-async def delete_store(store_id: UUID, db: db_dependency):
+async def delete_store(store_id: UUID,
+                       db: db_dependency,
+                       current_user: Annotated[dict, Depends(require_access_level(4))]):
     """Delete a Store by ID."""
     try:
         store = (

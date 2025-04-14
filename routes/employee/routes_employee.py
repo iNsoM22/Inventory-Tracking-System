@@ -14,7 +14,7 @@ from utils.auth import require_access_level
 from schemas.user import User
 
 
-router = APIRouter(prefix="/employees", tags=["Employee Management"])
+router = APIRouter(prefix="/employees")
 
 
 @router.post("/add",

@@ -11,7 +11,7 @@ from utils.create_transaction import add_transaction
 from utils.restock_creator import create_restock_items, add_restock_items_to_inventory
 
 
-router = APIRouter(prefix="/restocks", tags=["Restocks"])
+router = APIRouter(prefix="/restocks")
 
 
 @router.post("/add",

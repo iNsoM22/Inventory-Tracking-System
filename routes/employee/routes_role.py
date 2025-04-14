@@ -8,7 +8,7 @@ from validations.role import (
     RoleDeleteRequest)
 from utils.db import db_dependency
 from schemas.role import Role
-from utils.auth import user_dependency, require_access_level
+from utils.auth import require_access_level
 
 
 router = APIRouter(prefix="/management")

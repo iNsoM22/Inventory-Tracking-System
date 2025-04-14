@@ -15,7 +15,7 @@ from utils.auth import user_dependency, require_access_level
 from utils.create_transaction import add_transaction
 
 
-router = APIRouter(prefix="/refunds", tags=["Refunds"])
+router = APIRouter(prefix="/refunds")
 
 
 @router.post("/add",

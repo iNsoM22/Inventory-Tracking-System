@@ -11,7 +11,7 @@ from utils.auth import require_access_level
 from utils.create_transaction import add_transaction
 
 
-router = APIRouter(prefix="/stock-removals", tags=["Stock Removals"])
+router = APIRouter(prefix="/stock-removals")
 
 
 @router.post("/add",

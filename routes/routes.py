@@ -1,0 +1,15 @@
+from .customer.routes_customer import router as customer_router
+from .employee.routes_employee import router as employee_router
+from .employee.routes_role import router as role_router
+from .order.routes_order import router as order_router
+from .order.routes_refund import router as refund_router
+from .product.routes_category import router as category_router
+from .product.routes_product import router as product_router
+from .user.routes_auth import router as auth_router
+from .user.routes_user import router as user_router
+from .store.routes_inventory import router as inventory_router
+from .store.routes_location import router as location_router
+from .store.routes_restock import router as restock_router
+from .store.routes_stock_removal import router as stock_removal_router
+from .store.routes_store import router as store_router
+from .store.routes_transaction import router as transaction_router

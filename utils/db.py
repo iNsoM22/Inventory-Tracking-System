@@ -11,9 +11,10 @@ import os
 db_user = os.environ.get("DB_USER")
 db_password = os.environ.get("DB_PASSWORD")
 db_url = os.environ.get("DB_URL")
+db_name = os.environ.get("DB_NAME")
 
 
-DATABASE_URL = f"postgresql+psycopg2://{db_user}:{db_password}@{db_url}/InventorySystem"
+DATABASE_URL = f"postgresql+psycopg2://{db_user}:{db_password}@{db_url}/{db_name}"
 
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)

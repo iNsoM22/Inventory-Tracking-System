@@ -1,9 +1,10 @@
 from .base import Base
 from .customer import Customer
-from .employee import Role, Employee
+from .role import Role
+from .employee import Employee
 from .inventory import Inventory
 from .order import Order, CartItems
-from .product import Product
+from .product import Product, Category
 from .refund import Refund, RefundItems
 from .restock import Restock, RestockItems
 from .store import Location, Store
@@ -16,6 +17,7 @@ __all__ = [
     "Base",
     "Customer",
     "Role",
+    "Category",
     "Employee",
     "Inventory",
     "Order",

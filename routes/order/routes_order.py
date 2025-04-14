@@ -13,7 +13,7 @@ from utils.auth import require_access_level, user_dependency
 from utils.create_transaction import add_transaction
 
 
-router = APIRouter(prefix="/orders", tags=["Orders"])
+router = APIRouter(prefix="/orders")
 
 
 @router.post("/add",
